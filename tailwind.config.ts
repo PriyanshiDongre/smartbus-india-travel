@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -107,6 +106,14 @@ export default {
 				'slide-in-right': {
 					'0%': { transform: 'translateX(10px)', opacity: '0' },
 					'100%': { transform: 'translateX(0)', opacity: '1' },
+				},
+				'subtle-zoom': {
+					'0%, 100%': { transform: 'scale(1.05)' },
+					'50%': { transform: 'scale(1.08)' },
+				},
+				'fade-in-up': {
+					'0%': { opacity: '0', transform: 'translateY(20px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' },
 				}
 			},
 			animation: {
@@ -115,6 +122,8 @@ export default {
 				'pulse-subtle': 'pulse-subtle 2s infinite ease-in-out',
 				'slide-in-bottom': 'slide-in-bottom 0.3s ease-out',
 				'slide-in-right': 'slide-in-right 0.3s ease-out',
+				'subtle-zoom': 'subtle-zoom 20s ease-in-out infinite',
+				'fade-in-up': 'fade-in-up 0.6s ease-out forwards',
 			}
 		}
 	},

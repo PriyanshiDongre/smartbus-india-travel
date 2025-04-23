@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,28 +14,27 @@ const Hero = () => {
   
   return (
     <div className="relative w-full">
-      {/* Background with overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-smartbus-dark-blue to-smartbus-blue opacity-90 z-0"></div>
+      <div className="absolute inset-0 hero-gradient opacity-90 z-0"></div>
       
       {/* Hero background image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center z-[-1]"
+        className="absolute inset-0 bg-cover bg-center z-[-1] scale-105 animate-subtle-zoom"
         style={{
           backgroundImage: `url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')`
         }}
       ></div>
       
-      <div className="container relative z-10 py-16 md:py-24">
+      <div className="container relative z-10 py-20 md:py-28">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="font-bold text-3xl md:text-5xl text-white mb-4">
+          <h1 className="font-bold text-4xl md:text-6xl text-white mb-6 animate-fade-in-up">
             Smart Way to Travel Across India
           </h1>
-          <p className="text-lg md:text-xl text-gray-100 mb-8">
+          <p className="text-xl md:text-2xl text-gray-100 mb-10 animate-fade-in-up delay-100">
             Real-time bus tracking, seat availability, and the best routes for your journey
           </p>
           
           {/* Search Box */}
-          <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+          <div className="search-box p-6 md:p-8 rounded-2xl animate-fade-in-up delay-200">
             <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
               <div className="md:col-span-3 relative">
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />

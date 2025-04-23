@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -131,5 +130,37 @@
   
   .route-stop-future {
     @apply border-gray-300 text-gray-500;
+  }
+
+  .hero-gradient {
+    @apply bg-gradient-to-r from-smartbus-dark-blue via-smartbus-blue to-smartbus-light-blue;
+  }
+
+  .feature-card {
+    @apply p-6 border rounded-xl transition-all duration-300 hover:border-smartbus-blue hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .feature-icon {
+    @apply mb-4 p-3 inline-block rounded-full bg-smartbus-gray transition-colors duration-300 group-hover:bg-smartbus-blue group-hover:text-white;
+  }
+
+  .route-card {
+    @apply hover:shadow-xl transition-all duration-300 hover:-translate-y-1;
+  }
+
+  .app-promo-gradient {
+    @apply bg-gradient-to-r from-smartbus-blue via-smartbus-light-blue to-smartbus-blue;
+  }
+
+  .button-primary {
+    @apply bg-smartbus-blue hover:bg-smartbus-dark-blue transition-all duration-300 transform hover:scale-105;
+  }
+
+  .button-secondary {
+    @apply bg-smartbus-orange hover:bg-smartbus-light-orange transition-all duration-300 transform hover:scale-105;
+  }
+
+  .search-box {
+    @apply backdrop-blur-lg bg-white/95 shadow-2xl;
   }
 }
