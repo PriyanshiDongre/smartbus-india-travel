@@ -1,5 +1,6 @@
 
 import { BusFront, MapPin, Navigation, Route, Clock, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Features = () => {
   const features = [
@@ -36,29 +37,31 @@ const Features = () => {
   ];
   
   return (
-    <section className="py-16 bg-white">
-      <div className="container">
-        <h2 className="text-3xl font-bold text-center mb-4 text-smartbus-text-dark bg-gradient-to-r from-smartbus-blue to-smartbus-light-blue bg-clip-text text-transparent">
+    <section className="py-12 bg-white">
+      <div className="container px-4">
+        <h2 className="text-2xl font-bold text-center mb-3 text-smartbus-text-dark bg-gradient-to-r from-smartbus-blue to-smartbus-light-blue bg-clip-text text-transparent">
           Smart Features for Smarter Travel
         </h2>
-        <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-          SmartBus brings you innovative features designed to make your bus travel across India convenient, predictable, and stress-free.
+        <p className="text-center text-gray-600 mb-8 max-w-md mx-auto text-sm">
+          Everything you need for convenient and stress-free bus travel.
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-2 gap-4">
           {features.map((feature, index) => (
-            <div 
+            <Card 
               key={index} 
-              className="group feature-card"
+              className="border-none shadow-md hover:shadow-lg transition-all duration-300"
             >
-              <div className="feature-icon">
-                {feature.icon}
-              </div>
-              <h3 className="text-xl font-bold mb-2 text-smartbus-text-dark group-hover:text-smartbus-blue transition-colors">
-                {feature.title}
-              </h3>
-              <p className="text-gray-600">{feature.description}</p>
-            </div>
+              <CardContent className="p-4 flex flex-col items-center text-center">
+                <div className="bg-smartbus-gray rounded-full p-3 mb-3">
+                  {feature.icon}
+                </div>
+                <h3 className="text-base font-bold mb-1 text-smartbus-text-dark">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 text-xs">{feature.description}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>

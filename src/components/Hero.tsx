@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Route, Search } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
 
 const Hero = () => {
   const [from, setFrom] = useState("");
@@ -24,50 +25,48 @@ const Hero = () => {
         }}
       ></div>
       
-      <div className="container relative z-10 py-20 md:py-28">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="font-bold text-4xl md:text-6xl text-white mb-6 animate-fade-in-up">
+      <div className="container relative z-10 pt-8 pb-14 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <h1 className="font-bold text-3xl text-white mb-4 animate-fade-in-up">
             Smart Way to Travel Across India
           </h1>
-          <p className="text-xl md:text-2xl text-gray-100 mb-10 animate-fade-in-up delay-100">
-            Real-time bus tracking, seat availability, and the best routes for your journey
+          <p className="text-base text-gray-100 mb-6 animate-fade-in-up delay-100">
+            Track buses, check seat availability, and find the best routes
           </p>
           
           {/* Search Box */}
-          <div className="search-box p-6 md:p-8 rounded-2xl animate-fade-in-up delay-200">
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-              <div className="md:col-span-3 relative">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <div className="search-box p-4 rounded-xl backdrop-blur-md bg-white/20 shadow-lg border border-white/30 animate-fade-in-up delay-200">
+            <div className="space-y-3">
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-100" size={18} />
                 <Input 
                   placeholder="From: City, Bus Stop"
-                  className="pl-10"
+                  className="pl-10 bg-white/20 border-white/30 text-white placeholder:text-gray-200"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
                 />
               </div>
-              <div className="md:col-span-3 relative">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-100" size={18} />
                 <Input 
                   placeholder="To: City, Bus Stop"
-                  className="pl-10"
+                  className="pl-10 bg-white/20 border-white/30 text-white placeholder:text-gray-200"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
                 />
               </div>
               <Button 
-                className="md:col-span-1 bg-smartbus-orange hover:bg-smartbus-light-orange"
+                className="w-full bg-smartbus-orange hover:bg-smartbus-light-orange flex items-center justify-center gap-2"
                 onClick={handleSearch}
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-4 h-4" />
+                <span>Find Buses</span>
               </Button>
             </div>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              <Button variant="outline" size="sm" className="bg-white text-smartbus-text-dark">
-                <Route className="mr-1 h-4 w-4" /> Popular Routes
-              </Button>
-              <Button variant="outline" size="sm" className="bg-white text-smartbus-text-dark">Delhi ⇄ Jaipur</Button>
-              <Button variant="outline" size="sm" className="bg-white text-smartbus-text-dark">Mumbai ⇄ Pune</Button>
-              <Button variant="outline" size="sm" className="bg-white text-smartbus-text-dark">Bangalore ⇄ Chennai</Button>
+              <Button variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 text-xs px-2">Delhi ⇄ Jaipur</Button>
+              <Button variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 text-xs px-2">Mumbai ⇄ Pune</Button>
+              <Button variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 text-xs px-2">Bangalore ⇄ Chennai</Button>
             </div>
           </div>
         </div>
