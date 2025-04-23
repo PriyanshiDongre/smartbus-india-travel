@@ -15,6 +15,8 @@ const PopularRoutes = () => {
       distance: "268 km",
       price: "₹450 - ₹1200",
       frequency: "Every 30 mins",
+      fromStop: "Central",
+      toStop: "Main Bus Stand",
       operators: ["Rajasthan Roadways", "UPSRTC", "IntrCity SmartBus"],
       tag: "Popular"
     },
@@ -26,6 +28,8 @@ const PopularRoutes = () => {
       distance: "148 km",
       price: "₹350 - ₹900",
       frequency: "Every 15 mins",
+      fromStop: "Central",
+      toStop: "Main Bus Stand",
       operators: ["MSRTC", "Purple Travels", "Prasanna Purple"],
       tag: "Express"
     },
@@ -37,6 +41,8 @@ const PopularRoutes = () => {
       distance: "143 km",
       price: "₹150 - ₹750",
       frequency: "Every 20 mins",
+      fromStop: "Central",
+      toStop: "Main Bus Stand",
       operators: ["KSRTC", "SRS Travels", "VRL Logistics"],
       tag: "Frequent"
     },
@@ -48,6 +54,8 @@ const PopularRoutes = () => {
       distance: "151 km",
       price: "₹200 - ₹650",
       frequency: "Every 45 mins",
+      fromStop: "Central",
+      toStop: "Main Bus Stand",
       operators: ["TNSTC", "PRTC", "KPN Travels"],
       tag: "Scenic"
     }
@@ -68,44 +76,48 @@ const PopularRoutes = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {routes.map((route) => (
-            <Card key={route.id} className="hover:shadow-lg transition-all">
-              <CardContent className="p-5">
+            <Card key={route.id} className="hover:shadow-lg transition-all h-full">
+              <CardContent className="p-5 flex flex-col h-full">
+                {/* Top row with tag and distance */}
                 <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <Badge variant="secondary" className="bg-smartbus-gray">
-                      {route.tag}
-                    </Badge>
-                  </div>
+                  <Badge variant="secondary" className="bg-smartbus-gray">
+                    {route.tag}
+                  </Badge>
                   <span className="text-sm font-medium text-gray-500">{route.distance}</span>
                 </div>
                 
+                {/* Route information with fixed heights */}
                 <div className="flex items-center justify-between mb-6">
-                  <div className="flex flex-col">
-                    <span className="text-lg font-bold">{route.from}</span>
+                  {/* From location */}
+                  <div className="flex flex-col w-2/5 overflow-hidden">
+                    <span className="text-lg font-bold truncate">{route.from}</span>
                     <div className="flex items-center text-sm text-gray-500">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      <span>Central</span>
+                      <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">{route.fromStop}</span>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-center px-4">
+                  {/* Arrow and duration */}
+                  <div className="flex flex-col items-center px-2 flex-shrink-0">
                     <ArrowRight className="text-smartbus-blue h-5 w-5 mb-1" />
                     <span className="text-xs text-gray-500">{route.duration}</span>
                   </div>
                   
-                  <div className="flex flex-col text-right">
-                    <span className="text-lg font-bold">{route.to}</span>
+                  {/* To location */}
+                  <div className="flex flex-col items-end w-2/5 overflow-hidden">
+                    <span className="text-lg font-bold truncate">{route.to}</span>
                     <div className="flex items-center justify-end text-sm text-gray-500">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      <span>Main Bus Stand</span>
+                      <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">{route.toStop}</span>
                     </div>
                   </div>
                 </div>
                 
-                <div className="border-t pt-4 space-y-2">
+                {/* Details section with consistent layout */}
+                <div className="border-t pt-4 space-y-2 flex-grow">
                   <div className="flex justify-between text-sm">
                     <div className="flex items-center text-gray-600">
-                      <Clock className="h-4 w-4 mr-1" />
+                      <Clock className="h-4 w-4 mr-1 flex-shrink-0" />
                       <span>Frequency:</span>
                     </div>
                     <span className="font-medium">{route.frequency}</span>
@@ -113,13 +125,14 @@ const PopularRoutes = () => {
                   
                   <div className="flex justify-between text-sm">
                     <div className="flex items-center text-gray-600">
-                      <Calendar className="h-4 w-4 mr-1" />
+                      <Calendar className="h-4 w-4 mr-1 flex-shrink-0" />
                       <span>Price Range:</span>
                     </div>
                     <span className="font-medium">{route.price}</span>
                   </div>
                 </div>
                 
+                {/* Button at the bottom */}
                 <Button className="w-full mt-4 bg-smartbus-blue hover:bg-smartbus-dark-blue">
                   View Details
                 </Button>
