@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,16 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				smartbus: {
+					blue: '#0F52BA',
+					orange: '#FF6B35',
+					'light-blue': '#3F78E0',
+					'light-orange': '#FF8B55',
+					'dark-blue': '#0A3A83',
+					'gray': '#F0F3F9',
+					'text-dark': '#222831',
+					'text-light': '#EEEEEE',
 				}
 			},
 			borderRadius: {
@@ -84,11 +95,26 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-subtle': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' },
+				},
+				'slide-in-bottom': {
+					'0%': { transform: 'translateY(10px)', opacity: '0' },
+					'100%': { transform: 'translateY(0)', opacity: '1' },
+				},
+				'slide-in-right': {
+					'0%': { transform: 'translateX(10px)', opacity: '0' },
+					'100%': { transform: 'translateX(0)', opacity: '1' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-subtle': 'pulse-subtle 2s infinite ease-in-out',
+				'slide-in-bottom': 'slide-in-bottom 0.3s ease-out',
+				'slide-in-right': 'slide-in-right 0.3s ease-out',
 			}
 		}
 	},
