@@ -4,7 +4,7 @@ import Hero from "@/components/Hero";
 import LiveTrackingPreview from "@/components/LiveTrackingPreview";
 import Features from "@/components/Features";
 import PopularRoutes from "@/components/PopularRoutes";
-import AppPromo from "@/components/AppPromo";
+// Removed AppPromo import
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -16,7 +16,7 @@ const Index = () => {
         <LiveTrackingPreview />
         <Features />
         <PopularRoutes />
-        <AppPromo />
+        {/* Removed AppPromo component */}
       </main>
       <Footer />
     </div>
