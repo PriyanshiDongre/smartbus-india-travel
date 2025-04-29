@@ -3,9 +3,30 @@ import { BusFront, MapPin, Menu, Route, Search, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    }
+  };
   
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b shadow-sm">
@@ -39,9 +60,34 @@ const Header = () => {
             <Search className="h-4 w-4" />
           </Button>
           
-          <Button className="bg-smartbus-blue hover:bg-smartbus-dark-blue hidden md:flex">
-            Book Now
-          </Button>
+          {user ? (
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-sm font-medium">{user.email}</span>
+              <Button 
+                variant="ghost" 
+                onClick={handleSignOut}
+                className="text-smartbus-text-dark hover:text-smartbus-blue"
+              >
+                Sign Out
+              </Button>
+              <Button className="bg-smartbus-blue hover:bg-smartbus-dark-blue">
+                Book Now
+              </Button>
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-2">
+              <Link to="/login">
+                <Button variant="ghost" className="text-smartbus-text-dark hover:text-smartbus-blue">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/signup">
+                <Button className="bg-smartbus-blue hover:bg-smartbus-dark-blue">
+                  Sign Up
+                </Button>
+              </Link>
+            </div>
+          )}
           
           {/* Mobile menu button */}
           <Button
@@ -93,9 +139,36 @@ const Header = () => {
             </Link>
             
             <div className="pt-2 border-t">
-              <Button className="w-full bg-smartbus-blue hover:bg-smartbus-dark-blue">
-                Book Now
-              </Button>
+              {user ? (
+                <>
+                  <div className="p-2 mb-2 text-sm">
+                    Signed in as: <span className="font-medium">{user.email}</span>
+                  </div>
+                  <Button 
+                    className="w-full mb-2"
+                    variant="outline"
+                    onClick={handleSignOut}
+                  >
+                    Sign Out
+                  </Button>
+                  <Button className="w-full bg-smartbus-blue hover:bg-smartbus-dark-blue">
+                    Book Now
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full mb-2" variant="outline">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full bg-smartbus-blue hover:bg-smartbus-dark-blue">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
