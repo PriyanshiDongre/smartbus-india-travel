@@ -118,9 +118,11 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-4">
-                <Button variant="secondary" className="bg-white text-smartbus-blue hover:bg-smartbus-text-light">
-                  <Bus className="mr-2 h-4 w-4" />
-                  Book Ticket
+                <Button variant="secondary" className="bg-white text-smartbus-blue hover:bg-smartbus-text-light" asChild>
+                  <Link to="/book-ticket">
+                    <Bus className="mr-2 h-4 w-4" />
+                    Book Ticket
+                  </Link>
                 </Button>
                 <Button variant="secondary" className="bg-white/20 text-white hover:bg-white/30">
                   <Map className="mr-2 h-4 w-4" />
@@ -189,9 +191,11 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent className="text-center py-8">
                     <p className="text-muted-foreground mb-4">You don't have any upcoming bus trips booked.</p>
-                    <Button>
-                      <Bus className="mr-2 h-4 w-4" />
-                      Book a Trip
+                    <Button asChild>
+                      <Link to="/book-ticket">
+                        <Bus className="mr-2 h-4 w-4" />
+                        Book a Trip
+                      </Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -233,8 +237,10 @@ const Dashboard = () => {
                         </div>
                       </CardContent>
                       <CardFooter>
-                        <Button variant="outline" size="sm" className="w-full">
-                          Book Again
+                        <Button variant="outline" size="sm" className="w-full" asChild>
+                          <Link to="/book-ticket">
+                            Book Again
+                          </Link>
                         </Button>
                       </CardFooter>
                     </Card>

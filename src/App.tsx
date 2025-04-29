@@ -16,6 +16,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
+import BookTicket from "./pages/BookTicket";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,11 @@ const App = () => (
               <Route path="/profile" element={
                 <AuthGuard>
                   <Profile />
+                </AuthGuard>
+              } />
+              <Route path="/book-ticket" element={
+                <AuthGuard>
+                  <BookTicket />
                 </AuthGuard>
               } />
               
