@@ -1,14 +1,16 @@
 
-import { BusFront, MapPin, Menu, Route, Search, X } from "lucide-react";
+import { BusFront, MapPin, Menu, Route, Search, X, User, Settings } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/contexts/RoleContext";
 import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useRole();
   const { toast } = useToast();
   
   const handleSignOut = async () => {
@@ -53,6 +55,16 @@ const Header = () => {
           <Link to="/schedule" className="text-smartbus-text-dark font-medium hover:text-smartbus-blue transition-colors">
             Schedules
           </Link>
+          {user && (
+            <Link to="/dashboard" className="text-smartbus-text-dark font-medium hover:text-smartbus-blue transition-colors">
+              Dashboard
+            </Link>
+          )}
+          {isAdmin && (
+            <Link to="/admin" className="text-smartbus-text-dark font-medium hover:text-smartbus-blue transition-colors">
+              Admin
+            </Link>
+          )}
         </nav>
         
         <div className="flex items-center gap-2">
@@ -62,7 +74,12 @@ const Header = () => {
           
           {user ? (
             <div className="hidden md:flex items-center gap-2">
-              <span className="text-sm font-medium">{user.email}</span>
+              <Link to="/profile">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">Profile</span>
+                </Button>
+              </Link>
               <Button 
                 variant="ghost" 
                 onClick={handleSignOut}
@@ -138,12 +155,40 @@ const Header = () => {
               <span>Schedules</span>
             </Link>
             
+            {user && (
+              <Link 
+                to="/dashboard" 
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <User className="h-5 w-5 text-smartbus-blue" />
+                <span>Dashboard</span>
+              </Link>
+            )}
+            
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Settings className="h-5 w-5 text-smartbus-blue" />
+                <span>Admin</span>
+              </Link>
+            )}
+            
             <div className="pt-2 border-t">
               {user ? (
                 <>
                   <div className="p-2 mb-2 text-sm">
                     Signed in as: <span className="font-medium">{user.email}</span>
                   </div>
+                  <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full mb-2" variant="outline">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Button>
+                  </Link>
                   <Button 
                     className="w-full mb-2"
                     variant="outline"
