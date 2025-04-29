@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { BusStop, Map, Route, Clock, Settings, User } from 'lucide-react';
+import { Bus, Map, Route, Clock, Settings, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 
@@ -119,7 +119,7 @@ const Dashboard = () => {
             <CardContent>
               <div className="flex flex-wrap gap-4">
                 <Button variant="secondary" className="bg-white text-smartbus-blue hover:bg-smartbus-text-light">
-                  <BusStop className="mr-2 h-4 w-4" />
+                  <Bus className="mr-2 h-4 w-4" />
                   Book Ticket
                 </Button>
                 <Button variant="secondary" className="bg-white/20 text-white hover:bg-white/30">
@@ -190,7 +190,7 @@ const Dashboard = () => {
                   <CardContent className="text-center py-8">
                     <p className="text-muted-foreground mb-4">You don't have any upcoming bus trips booked.</p>
                     <Button>
-                      <BusStop className="mr-2 h-4 w-4" />
+                      <Bus className="mr-2 h-4 w-4" />
                       Book a Trip
                     </Button>
                   </CardContent>
