@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Bus, Map, Route, Clock, Settings, User } from 'lucide-react';
+import { Bus, Map, Ticket, Clock, Settings, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 
@@ -173,9 +173,11 @@ const Dashboard = () => {
                         </div>
                       </CardContent>
                       <CardFooter className="flex justify-between">
-                        <Button variant="outline" size="sm">
-                          <Map className="mr-2 h-4 w-4" />
-                          Track
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/ticket/${booking.id}`}>
+                            <Ticket className="mr-2 h-4 w-4" />
+                            View
+                          </Link>
                         </Button>
                         <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
                           Cancel
@@ -236,8 +238,14 @@ const Dashboard = () => {
                           </div>
                         </div>
                       </CardContent>
-                      <CardFooter>
-                        <Button variant="outline" size="sm" className="w-full" asChild>
+                      <CardFooter className="flex justify-between">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/ticket/${booking.id}`}>
+                            <Ticket className="mr-2 h-4 w-4" />
+                            View
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
                           <Link to="/book-ticket">
                             Book Again
                           </Link>

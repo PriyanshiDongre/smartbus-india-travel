@@ -17,6 +17,7 @@ import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import BookTicket from "./pages/BookTicket";
+import TicketView from "./pages/TicketView";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,11 @@ const App = () => (
               <Route path="/book-ticket" element={
                 <AuthGuard>
                   <BookTicket />
+                </AuthGuard>
+              } />
+              <Route path="/ticket/:ticketId" element={
+                <AuthGuard>
+                  <TicketView />
                 </AuthGuard>
               } />
               
