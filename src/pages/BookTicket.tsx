@@ -65,9 +65,11 @@ const formSchema = z.object({
   date: z.date({
     required_error: "Please select a date",
   }),
-  passengers: z.string().transform(val => parseInt(val)).refine(val => val > 0 && val <= 6, {
-    message: "Number of passengers must be between 1 and 6",
-  }),
+  // Change: Fix the passengers field to properly handle number type
+  passengers: z.coerce.number().int().min(1).max(6)
+    .refine(val => val > 0 && val <= 6, {
+      message: "Number of passengers must be between 1 and 6",
+    }),
 });
 
 const BookTicket = () => {
@@ -81,7 +83,7 @@ const BookTicket = () => {
     defaultValues: {
       departure: "",
       arrival: "",
-      passengers: "1",
+      passengers: 1, // Changed from string "1" to number 1
     },
   });
 
@@ -237,6 +239,7 @@ const BookTicket = () => {
                                   date < new Date() || date > new Date(new Date().setMonth(new Date().getMonth() + 2))
                                 }
                                 initialFocus
+                                className={cn("p-3 pointer-events-auto")}
                               />
                             </PopoverContent>
                           </Popover>
@@ -252,8 +255,8 @@ const BookTicket = () => {
                         <FormItem>
                           <FormLabel>Number of Passengers</FormLabel>
                           <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
+                            onValueChange={(value) => field.onChange(Number(value))}
+                            value={field.value.toString()}
                           >
                             <FormControl>
                               <SelectTrigger>
