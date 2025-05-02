@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useRef, useState } from "react";
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import { toast } from "@/components/ui/sonner";
+import { Loader } from "@googlemaps/js-api-loader";
 
-// Define the proper type for coordinates to match mapboxgl.LngLatLike
-type Coordinates = [number, number]; // Explicitly a tuple with exactly 2 elements
+// Define the proper type for coordinates
+type Coordinates = [number, number]; // lat, lng
 
 interface Bus {
   id: string;
@@ -19,16 +18,17 @@ interface Bus {
   occupancy: number;
   nextStop: string;
   progress: number;
-  coordinates: Coordinates; // Updated to use our proper type
+  coordinates: Coordinates;
 }
 
 const LiveTrackingPreview = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>("");
+  const map = useRef<google.maps.Map | null>(null);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
-  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const userMarkerRef = useRef<google.maps.Marker | null>(null);
+  const busMarkersRef = useRef<google.maps.Marker[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -43,7 +43,7 @@ const LiveTrackingPreview = () => {
       occupancy: 65,
       nextStop: "HSR Layout",
       progress: 65,
-      coordinates: [77.623177, 12.935971] // Properly typed as [number, number]
+      coordinates: [12.935971, 77.623177] // lat, lng
     },
     {
       id: "KA-05-G-7890",
@@ -53,7 +53,7 @@ const LiveTrackingPreview = () => {
       occupancy: 40,
       nextStop: "Kundalahalli Gate",
       progress: 40,
-      coordinates: [77.731700, 12.969300] // Properly typed as [number, number]
+      coordinates: [12.969300, 77.731700] // lat, lng
     },
     {
       id: "KA-02-J-1234",
@@ -63,7 +63,7 @@ const LiveTrackingPreview = () => {
       occupancy: 85,
       nextStop: "Mantri Square",
       progress: 80,
-      coordinates: [77.583862, 13.015578] // Properly typed as [number, number]
+      coordinates: [13.015578, 77.583862] // lat, lng
     }
   ];
 
@@ -81,31 +81,31 @@ const LiveTrackingPreview = () => {
     // Get initial position
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { longitude, latitude } = position.coords;
-        const coordinates: Coordinates = [longitude, latitude];
+        const { latitude, longitude } = position.coords;
+        const coordinates: Coordinates = [latitude, longitude];
         setUserLocation(coordinates);
         
         if (map.current) {
-          map.current.flyTo({
-            center: coordinates,
-            zoom: 15,
-            essential: true
-          });
+          map.current.panTo({ lat: latitude, lng: longitude });
+          map.current.setZoom(15);
           
           // Update or create user marker
           if (userMarkerRef.current) {
-            userMarkerRef.current.setLngLat(coordinates);
+            userMarkerRef.current.setPosition({ lat: latitude, lng: longitude });
           } else if (map.current) {
-            const userMarkerEl = document.createElement('div');
-            userMarkerEl.className = "bg-blue-500 border-2 border-white shadow-lg";
-            userMarkerEl.style.width = "20px";
-            userMarkerEl.style.height = "20px";
-            userMarkerEl.style.borderRadius = "50%";
-            userMarkerEl.style.animation = "pulse 1.5s infinite";
-            
-            userMarkerRef.current = new mapboxgl.Marker({ element: userMarkerEl })
-              .setLngLat(coordinates)
-              .addTo(map.current);
+            userMarkerRef.current = new google.maps.Marker({
+              position: { lat: latitude, lng: longitude },
+              map: map.current,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: "#1E88E5",
+                fillOpacity: 1,
+                strokeColor: "#FFFFFF",
+                strokeWeight: 2,
+                scale: 8
+              },
+              title: "Your Location"
+            });
           }
           
           toast.success("Your location has been found!");
@@ -140,12 +140,12 @@ const LiveTrackingPreview = () => {
     // Set up continuous tracking
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { longitude, latitude } = position.coords;
-        const coordinates: Coordinates = [longitude, latitude];
+        const { latitude, longitude } = position.coords;
+        const coordinates: Coordinates = [latitude, longitude];
         setUserLocation(coordinates);
         
         if (userMarkerRef.current && map.current) {
-          userMarkerRef.current.setLngLat(coordinates);
+          userMarkerRef.current.setPosition({ lat: latitude, lng: longitude });
         }
       },
       (error) => {
@@ -169,56 +169,74 @@ const LiveTrackingPreview = () => {
   };
   
   useEffect(() => {
-    if (!mapboxToken) return;
+    if (!googleMapsApiKey) return;
     if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
-    
-    // Initialize map
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [77.5946, 12.9716], // Bangalore center
-      zoom: 11
+    // Initialize Google Maps
+    const loader = new Loader({
+      apiKey: googleMapsApiKey,
+      version: "weekly",
+      libraries: ["places"]
     });
 
-    // Add navigation controls
-    map.current.addControl(
-      new mapboxgl.NavigationControl(),
-      'top-right'
-    );
-
-    // Set up map load event
-    map.current.on('load', () => {
-      setMapLoaded(true);
-      
-      // Add markers for buses when map loads
-      buses.forEach((bus) => {
-        if (!map.current) return;
-        
-        // Create a custom element for the bus marker
-        const markerEl = document.createElement('div');
-        markerEl.className = `bg-${bus.id.includes('KA-01') || bus.id.includes('KA-02') ? 'smartbus-blue' : 'smartbus-orange'} text-white p-2 rounded-full shadow-lg`;
-        markerEl.style.width = '28px';
-        markerEl.style.height = '28px';
-        markerEl.style.borderRadius = '50%';
-        markerEl.style.display = 'flex';
-        markerEl.style.alignItems = 'center';
-        markerEl.style.justifyContent = 'center';
-        markerEl.style.animation = 'pulse 2s infinite';
-        markerEl.innerHTML = `<span class="text-xs font-bold">${bus.id.substring(0, 5)}</span>`;
-        
-        // Add the marker to the map - coordinates now properly typed
-        new mapboxgl.Marker(markerEl)
-          .setLngLat(bus.coordinates)
-          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
-            `<h3 class="font-bold">${bus.id}</h3>
-             <p>${bus.route}</p>
-             <p>Next stop: ${bus.nextStop}</p>
-             <p>ETA: ${bus.eta}</p>`
-          ))
-          .addTo(map.current);
+    loader.load().then(() => {
+      // Create the map instance
+      map.current = new google.maps.Map(mapContainer.current!, {
+        center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
+        zoom: 11,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
       });
+
+      // Add event listener for when the map has finished loading
+      google.maps.event.addListenerOnce(map.current, 'idle', () => {
+        setMapLoaded(true);
+
+        // Add bus markers
+        buses.forEach((bus) => {
+          if (!map.current) return;
+          
+          // Create info window content
+          const infoContent = `
+            <div style="padding: 8px; max-width: 200px;">
+              <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
+              <p style="margin-bottom: 4px;">${bus.route}</p>
+              <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
+              <p>ETA: ${bus.eta}</p>
+            </div>
+          `;
+          
+          const infoWindow = new google.maps.InfoWindow({
+            content: infoContent
+          });
+          
+          // Add the marker
+          const busMarker = new google.maps.Marker({
+            position: { lat: bus.coordinates[0], lng: bus.coordinates[1] },
+            map: map.current,
+            title: bus.id,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: bus.id.includes('KA-01') || bus.id.includes('KA-02') ? '#1E40AF' : '#F59E0B',
+              fillOpacity: 0.8,
+              strokeColor: '#FFFFFF',
+              strokeWeight: 2,
+              scale: 10
+            }
+          });
+          
+          // Add click event for info window
+          busMarker.addListener('click', () => {
+            infoWindow.open(map.current, busMarker);
+          });
+          
+          busMarkersRef.current.push(busMarker);
+        });
+      });
+    }).catch(e => {
+      console.error("Error loading Google Maps API", e);
+      toast.error("Failed to load Google Maps. Please check your API key.");
     });
 
     return () => {
@@ -226,12 +244,20 @@ const LiveTrackingPreview = () => {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
       
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
+      // Clean up markers and map on unmount
+      if (busMarkersRef.current.length) {
+        busMarkersRef.current.forEach(marker => marker.setMap(null));
+        busMarkersRef.current = [];
       }
+      
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setMap(null);
+        userMarkerRef.current = null;
+      }
+      
+      map.current = null;
     };
-  }, [mapboxToken]);
+  }, [googleMapsApiKey]);
 
   return (
     <section className="py-12 bg-smartbus-gray">
@@ -241,44 +267,44 @@ const LiveTrackingPreview = () => {
           <div className="w-full md:w-2/3">
             <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Live Bus Tracking</h2>
             
-            {!mapboxToken && (
+            {!googleMapsApiKey && (
               <div className="mb-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
-                <h3 className="font-bold text-yellow-800">Mapbox Token Required</h3>
-                <p className="mb-2 text-yellow-700">To see the interactive map, please enter your Mapbox public token:</p>
+                <h3 className="font-bold text-yellow-800">Google Maps API Key Required</h3>
+                <p className="mb-2 text-yellow-700">To see the interactive map, please enter your Google Maps API key:</p>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
                     className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-smartbus-blue"
-                    value={mapboxToken}
-                    onChange={(e) => setMapboxToken(e.target.value)}
-                    placeholder="Enter your Mapbox token (pk.ey...)"
+                    value={googleMapsApiKey}
+                    onChange={(e) => setGoogleMapsApiKey(e.target.value)}
+                    placeholder="Enter your Google Maps API key"
                   />
                   <Button 
                     onClick={() => {}}
-                    disabled={!mapboxToken}
+                    disabled={!googleMapsApiKey}
                     className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
                   >
                     Apply
                   </Button>
                 </div>
                 <p className="mt-2 text-xs text-gray-600">
-                  You can get a token by signing up at <a href="https://www.mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-smartbus-blue underline">mapbox.com</a>
+                  You can get an API key by signing up at <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-smartbus-blue underline">Google Cloud Console</a>
                 </p>
               </div>
             )}
             
             <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
-              {!mapboxToken && (
-                <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/77.5946,12.9716,11,0/800x400?access_token=pk.placeholder')] bg-cover bg-center opacity-70"></div>
+              {!googleMapsApiKey && (
+                <div className="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=12.9716,77.5946&zoom=11&size=800x400&key=YOUR_API_KEY')] bg-cover bg-center opacity-70"></div>
               )}
               
               <div ref={mapContainer} className="absolute inset-0"></div>
               
-              {!mapboxToken && (
+              {!googleMapsApiKey && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <div className="bg-white p-6 rounded-lg max-w-md text-center shadow-xl">
                     <h3 className="font-bold text-xl mb-2">Interactive Map Disabled</h3>
-                    <p>Enter your Mapbox token above to enable the interactive map and see live bus locations.</p>
+                    <p>Enter your Google Maps API key above to enable the interactive map and see live bus locations.</p>
                   </div>
                 </div>
               )}
@@ -287,12 +313,12 @@ const LiveTrackingPreview = () => {
             <div className="flex flex-wrap gap-2 mt-4 justify-center">
               <Button 
                 className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
-                disabled={!mapboxToken}
+                disabled={!googleMapsApiKey}
               >
                 Open Full Map
               </Button>
               
-              {mapboxToken && (
+              {googleMapsApiKey && (
                 <>
                   <Button 
                     variant="outline" 
@@ -318,11 +344,8 @@ const LiveTrackingPreview = () => {
                       variant="secondary"
                       onClick={() => {
                         if (map.current && userLocation) {
-                          map.current.flyTo({
-                            center: userLocation,
-                            zoom: 15,
-                            essential: true
-                          });
+                          map.current.panTo({ lat: userLocation[0], lng: userLocation[1] });
+                          map.current.setZoom(15);
                         }
                       }}
                       disabled={!userLocation}
@@ -380,11 +403,8 @@ const LiveTrackingPreview = () => {
                       className="w-full border-smartbus-blue text-smartbus-blue hover:bg-smartbus-blue hover:text-white"
                       onClick={() => {
                         if (mapLoaded && map.current) {
-                          map.current.flyTo({
-                            center: bus.coordinates,
-                            zoom: 14,
-                            essential: true
-                          });
+                          map.current.panTo({ lat: bus.coordinates[0], lng: bus.coordinates[1] });
+                          map.current.setZoom(14);
                         }
                       }}
                     >
