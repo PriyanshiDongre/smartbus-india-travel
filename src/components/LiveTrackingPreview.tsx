@@ -3,8 +3,16 @@ import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useEffect, useRef, useState } from "react";
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 const LiveTrackingPreview = () => {
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [mapboxToken, setMapboxToken] = useState<string>("");
+  const [mapLoaded, setMapLoaded] = useState(false);
+
   // In a real app, this would be fetched from an API
   const buses = [
     {
@@ -14,7 +22,8 @@ const LiveTrackingPreview = () => {
       eta: "10 mins",
       occupancy: 65,
       nextStop: "HSR Layout",
-      progress: 65
+      progress: 65,
+      coordinates: [77.623177, 12.935971] // Silk Board coordinates
     },
     {
       id: "KA-05-G-7890",
@@ -23,7 +32,8 @@ const LiveTrackingPreview = () => {
       eta: "5 mins",
       occupancy: 40,
       nextStop: "Kundalahalli Gate",
-      progress: 40
+      progress: 40,
+      coordinates: [77.731700, 12.969300] // ITPL coordinates
     },
     {
       id: "KA-02-J-1234",
@@ -32,10 +42,79 @@ const LiveTrackingPreview = () => {
       eta: "15 mins",
       occupancy: 85,
       nextStop: "Mantri Square",
-      progress: 80
+      progress: 80,
+      coordinates: [77.583862, 13.015578] // Mekhri Circle coordinates
     }
   ];
   
+  useEffect(() => {
+    if (!mapboxToken) return;
+    if (!mapContainer.current || map.current) return;
+
+    mapboxgl.accessToken = mapboxToken;
+    
+    // Initialize map
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [77.5946, 12.9716], // Bangalore center
+      zoom: 11
+    });
+
+    // Add navigation controls
+    map.current.addControl(
+      new mapboxgl.NavigationControl(),
+      'top-right'
+    );
+
+    // Set up map load event
+    map.current.on('load', () => {
+      setMapLoaded(true);
+      
+      // Add markers for buses when map loads
+      buses.forEach((bus) => {
+        if (!map.current) return;
+        
+        // Create a custom element for the bus marker
+        const markerEl = document.createElement('div');
+        markerEl.className = `bg-${bus.id.includes('KA-01') || bus.id.includes('KA-02') ? 'smartbus-blue' : 'smartbus-orange'} text-white p-2 rounded-full shadow-lg`;
+        markerEl.style.width = '28px';
+        markerEl.style.height = '28px';
+        markerEl.style.borderRadius = '50%';
+        markerEl.style.display = 'flex';
+        markerEl.style.alignItems = 'center';
+        markerEl.style.justifyContent = 'center';
+        markerEl.style.animation = 'pulse 2s infinite';
+        markerEl.innerHTML = `<span class="text-xs font-bold">${bus.id.substring(0, 5)}</span>`;
+        
+        // Add the marker to the map
+        new mapboxgl.Marker(markerEl)
+          .setLngLat(bus.coordinates)
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+            `<h3 class="font-bold">${bus.id}</h3>
+             <p>${bus.route}</p>
+             <p>Next stop: ${bus.nextStop}</p>
+             <p>ETA: ${bus.eta}</p>`
+          ))
+          .addTo(map.current);
+      });
+      
+      // Add user location marker
+      if (map.current) {
+        const userMarker = new mapboxgl.Marker({ color: 'red' })
+          .setLngLat([77.5946, 12.9716]) // Center of Bangalore as default user location
+          .addTo(map.current);
+      }
+    });
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [mapboxToken]);
+
   return (
     <section className="py-12 bg-smartbus-gray">
       <div className="container">
@@ -43,44 +122,55 @@ const LiveTrackingPreview = () => {
           {/* Map Preview */}
           <div className="w-full md:w-2/3">
             <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Live Bus Tracking</h2>
-            <div className="map-container h-[400px] relative bg-gray-100">
-              {/* This would be a real map in a complete implementation */}
-              <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/77.5946,12.9716,11,0/800x400?access_token=pk.placeholder')] bg-cover bg-center opacity-70"></div>
-              
-              <div className="absolute top-4 right-4 bg-white p-2 rounded-md shadow-md">
-                <Navigation className="h-5 w-5 text-smartbus-blue" />
-              </div>
-              
-              {/* Bus markers */}
-              <div className="absolute top-1/2 left-1/3 transform -translate-x-1/2 -translate-y-1/2">
-                <div className="bg-smartbus-blue text-white p-2 rounded-full shadow-lg animate-pulse-subtle">
-                  <span className="text-xs font-bold">KA-01</span>
+            
+            {!mapboxToken && (
+              <div className="mb-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
+                <h3 className="font-bold text-yellow-800">Mapbox Token Required</h3>
+                <p className="mb-2 text-yellow-700">To see the interactive map, please enter your Mapbox public token:</p>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-smartbus-blue"
+                    value={mapboxToken}
+                    onChange={(e) => setMapboxToken(e.target.value)}
+                    placeholder="Enter your Mapbox token (pk.ey...)"
+                  />
+                  <Button 
+                    onClick={() => {}}
+                    disabled={!mapboxToken}
+                    className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
+                  >
+                    Apply
+                  </Button>
                 </div>
+                <p className="mt-2 text-xs text-gray-600">
+                  You can get a token by signing up at <a href="https://www.mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-smartbus-blue underline">mapbox.com</a>
+                </p>
               </div>
+            )}
+            
+            <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
+              {!mapboxToken && (
+                <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/77.5946,12.9716,11,0/800x400?access_token=pk.placeholder')] bg-cover bg-center opacity-70"></div>
+              )}
               
-              <div className="absolute top-1/4 right-1/3 transform -translate-x-1/2 -translate-y-1/2">
-                <div className="bg-smartbus-orange text-white p-2 rounded-full shadow-lg animate-pulse-subtle">
-                  <span className="text-xs font-bold">KA-05</span>
-                </div>
-              </div>
+              <div ref={mapContainer} className="absolute inset-0"></div>
               
-              <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <div className="bg-smartbus-blue text-white p-2 rounded-full shadow-lg animate-pulse-subtle">
-                  <span className="text-xs font-bold">KA-02</span>
+              {!mapboxToken && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <div className="bg-white p-6 rounded-lg max-w-md text-center shadow-xl">
+                    <h3 className="font-bold text-xl mb-2">Interactive Map Disabled</h3>
+                    <p>Enter your Mapbox token above to enable the interactive map and see live bus locations.</p>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Central marker for demo */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <MapPin className="h-8 w-8 text-red-500" />
-                <div className="bg-white px-2 py-1 rounded-md shadow-md text-xs font-medium mt-1">
-                  Your Location
-                </div>
-              </div>
+              )}
             </div>
             
             <div className="flex justify-center mt-4">
-              <Button className="bg-smartbus-blue hover:bg-smartbus-dark-blue">
+              <Button 
+                className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
+                disabled={!mapboxToken}
+              >
                 Open Full Map
               </Button>
             </div>
@@ -118,7 +208,20 @@ const LiveTrackingPreview = () => {
                       <Progress value={bus.progress} className="h-1.5" />
                     </div>
                     
-                    <Button variant="outline" size="sm" className="w-full border-smartbus-blue text-smartbus-blue hover:bg-smartbus-blue hover:text-white">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full border-smartbus-blue text-smartbus-blue hover:bg-smartbus-blue hover:text-white"
+                      onClick={() => {
+                        if (mapLoaded && map.current) {
+                          map.current.flyTo({
+                            center: bus.coordinates,
+                            zoom: 14,
+                            essential: true
+                          });
+                        }
+                      }}
+                    >
                       Track This Bus
                     </Button>
                   </CardContent>
