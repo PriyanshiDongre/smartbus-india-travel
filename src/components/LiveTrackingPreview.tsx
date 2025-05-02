@@ -19,6 +19,7 @@ interface Bus {
   nextStop: string;
   progress: number;
   coordinates: Coordinates;
+  isTest?: boolean;
 }
 
 const LiveTrackingPreview = () => {
@@ -33,6 +34,8 @@ const LiveTrackingPreview = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const [isTestBusEnabled, setIsTestBusEnabled] = useState(false);
+  const testBusMarkerRef = useRef<google.maps.Marker | null>(null);
 
   // In a real app, this would be fetched from an API
   const buses: Bus[] = [
@@ -65,6 +68,18 @@ const LiveTrackingPreview = () => {
       nextStop: "Mantri Square",
       progress: 80,
       coordinates: [13.015578, 77.583862] // lat, lng
+    },
+    // Test bus that uses user's location
+    {
+      id: "TEST-BUS-123",
+      route: "Test Route - Phone GPS Tracking",
+      location: "Your current location",
+      eta: "Real-time",
+      occupancy: 10,
+      nextStop: "Wherever you go",
+      progress: 100,
+      coordinates: [12.9716, 77.5946], // Default coordinates, will be updated with user location
+      isTest: true
     }
   ];
 
@@ -109,6 +124,11 @@ const LiveTrackingPreview = () => {
             });
           }
           
+          // If test bus is enabled, update its position too
+          if (isTestBusEnabled && testBusMarkerRef.current) {
+            testBusMarkerRef.current.setPosition({ lat: latitude, lng: longitude });
+          }
+          
           toast.success("Your location has been found!");
         }
       },
@@ -148,6 +168,11 @@ const LiveTrackingPreview = () => {
         if (userMarkerRef.current && map.current) {
           userMarkerRef.current.setPosition({ lat: latitude, lng: longitude });
         }
+        
+        // If test bus is enabled, update its position too
+        if (isTestBusEnabled && testBusMarkerRef.current) {
+          testBusMarkerRef.current.setPosition({ lat: latitude, lng: longitude });
+        }
       },
       (error) => {
         console.error("Tracking error:", error);
@@ -166,6 +191,72 @@ const LiveTrackingPreview = () => {
       watchIdRef.current = null;
       setIsLocating(false);
       toast.info("Location tracking stopped");
+    }
+  };
+
+  const enableTestBus = (enable: boolean = true) => {
+    setIsTestBusEnabled(enable);
+    
+    // If enabling test bus and we have user location but no test bus marker yet
+    if (enable && userLocation && !testBusMarkerRef.current && map.current) {
+      // Create test bus marker at user location
+      testBusMarkerRef.current = new google.maps.Marker({
+        position: { lat: userLocation[0], lng: userLocation[1] },
+        map: map.current,
+        icon: {
+          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+          fillColor: '#FF5722',
+          fillOpacity: 0.8,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2,
+          scale: 7,
+          rotation: 0 // Will be updated based on movement
+        },
+        title: "Test Bus (Your Phone)"
+      });
+      
+      // Create info window for test bus
+      const infoContent = `
+        <div style="padding: 8px; max-width: 200px;">
+          <h3 style="font-weight: bold; margin-bottom: 4px;">TEST-BUS-123</h3>
+          <p style="margin-bottom: 4px;">Test Route - Phone GPS Tracking</p>
+          <p style="margin-bottom: 4px;">Next stop: Wherever you go</p>
+          <p>ETA: Real-time</p>
+        </div>
+      `;
+      
+      const infoWindow = new google.maps.InfoWindow({
+        content: infoContent
+      });
+      
+      // Show info window initially then close after a few seconds
+      if (testBusMarkerRef.current) {
+        infoWindow.open(map.current, testBusMarkerRef.current);
+        setTimeout(() => infoWindow.close(), 5000);
+        
+        // Add click event to show info window again
+        testBusMarkerRef.current.addListener('click', () => {
+          infoWindow.open(map.current, testBusMarkerRef.current);
+        });
+      }
+      
+      if (map.current) {
+        map.current.panTo({ lat: userLocation[0], lng: userLocation[1] });
+        map.current.setZoom(15);
+      }
+      
+      toast.success("Test Bus is now tracking your phone's location!");
+    } 
+    // If disabling test bus
+    else if (!enable && testBusMarkerRef.current) {
+      testBusMarkerRef.current.setMap(null);
+      testBusMarkerRef.current = null;
+      toast.info("Test Bus tracking disabled");
+    }
+    // If trying to enable but no location yet
+    else if (enable && !userLocation) {
+      toast.error("Please enable location tracking first before tracking the Test Bus");
+      startLocationTracking();
     }
   };
 
@@ -202,7 +293,7 @@ const LiveTrackingPreview = () => {
 
           // Add bus markers
           buses.forEach((bus) => {
-            if (!map.current) return;
+            if (!map.current || bus.isTest) return; // Skip test bus here, we handle it separately
             
             // Create info window content
             const infoContent = `
@@ -263,6 +354,11 @@ const LiveTrackingPreview = () => {
         userMarkerRef.current = null;
       }
       
+      if (testBusMarkerRef.current) {
+        testBusMarkerRef.current.setMap(null);
+        testBusMarkerRef.current = null;
+      }
+      
       map.current = null;
     };
   }, [googleMapsApiKey]);
@@ -309,8 +405,8 @@ const LiveTrackingPreview = () => {
               <h3 className="font-bold text-amber-800">How to test tracking:</h3>
               <ol className="list-decimal pl-5 text-amber-700">
                 <li>Click "Track My Location" to allow GPS access</li>
-                <li>Once your location appears, click "Track This Bus" on any bus card</li>
-                <li>The map will show both your location and the bus position</li>
+                <li>Once your location appears, click "Track Test Bus" at the bottom of the list</li>
+                <li>The map will show a test bus that follows your phone's movement</li>
               </ol>
             </div>
             
@@ -371,7 +467,7 @@ const LiveTrackingPreview = () => {
           <div className="w-full md:w-1/3">
             <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Nearby Buses</h2>
             <div className="space-y-4">
-              {buses.map((bus) => (
+              {buses.filter(bus => !bus.isTest).map((bus) => (
                 <Card key={bus.id} className="bus-card hover:border-smartbus-blue">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-center mb-2">
@@ -418,6 +514,54 @@ const LiveTrackingPreview = () => {
                 </Card>
               ))}
               
+              {/* Special Test Bus card that follows user location */}
+              <Card className={`bus-card ${isTestBusEnabled ? 'border-orange-500 ring-2 ring-orange-200' : 'hover:border-orange-500'}`}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      {isTestBusEnabled && (
+                        <span className="animate-ping absolute h-2 w-2 rounded-full bg-orange-400 inline-block mr-1"></span>
+                      )}
+                      <span className="font-semibold text-sm text-orange-600">TEST-BUS-123</span>
+                    </div>
+                    <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                      DEMO
+                    </span>
+                  </div>
+                  
+                  <h3 className="font-bold text-smartbus-text-dark mb-2">Test Route - Phone GPS Tracking</h3>
+                  
+                  <div className="text-sm text-gray-600 mb-2">
+                    <MapPin className="inline-block h-4 w-4 mr-1" />
+                    {userLocation ? "Your current location" : "Enable location tracking first"}
+                  </div>
+                  
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Next stop: Wherever you go</span>
+                      <span>Occupancy: 10%</span>
+                    </div>
+                    <Progress value={isTestBusEnabled ? 100 : 0} className="h-1.5 bg-orange-100">
+                      <div className={`h-full bg-orange-500 ${isTestBusEnabled ? 'animate-pulse' : ''}`}></div>
+                    </Progress>
+                  </div>
+                  
+                  <Button 
+                    variant={isTestBusEnabled ? "default" : "outline"}
+                    size="sm" 
+                    className={`w-full ${
+                      isTestBusEnabled 
+                        ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                        : "border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white"
+                    }`}
+                    onClick={() => enableTestBus(!isTestBusEnabled)}
+                    disabled={!mapLoaded}
+                  >
+                    {isTestBusEnabled ? "Stop Test Bus Tracking" : "Track Test Bus (Your Phone)"}
+                  </Button>
+                </CardContent>
+              </Card>
+              
               <Button variant="link" className="w-full text-smartbus-blue">
                 View All Nearby Buses
               </Button>
@@ -430,4 +574,3 @@ const LiveTrackingPreview = () => {
 };
 
 export default LiveTrackingPreview;
-
