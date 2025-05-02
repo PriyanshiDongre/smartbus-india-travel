@@ -25,9 +25,9 @@ interface Bus {
 const LiveTrackingPreview = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<google.maps.Map | null>(null);
-  // This is a placeholder - replace with a valid API key for actual deployment
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const busMarkersRef = useRef<google.maps.Marker[]>([]);
@@ -261,82 +261,101 @@ const LiveTrackingPreview = () => {
   };
 
   useEffect(() => {
+    console.log("Initializing map with API key:", googleMapsApiKey ? "API key exists" : "API key missing");
+    
     if (!googleMapsApiKey) {
-      console.warn("No Google Maps API key provided. The map will not load correctly.");
+      console.error("No Google Maps API key provided");
+      setMapError("Missing Google Maps API key");
       toast.error("Missing Google Maps API key. Please add one to your environment variables.");
       return;
     }
     
     if (!mapContainer.current || map.current) return;
 
-    // Initialize Google Maps
-    const loader = new Loader({
-      apiKey: googleMapsApiKey,
-      version: "weekly",
-      libraries: ["places"]
-    });
-
-    loader.load().then(() => {
-      // Create the map instance
-      if (mapContainer.current) {
-        map.current = new google.maps.Map(mapContainer.current, {
-          center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
-          zoom: 11,
-          mapTypeControl: true,
-          streetViewControl: false,
-          fullscreenControl: true,
+    const initializeMap = async () => {
+      try {
+        // Initialize Google Maps
+        const loader = new Loader({
+          apiKey: googleMapsApiKey,
+          version: "weekly",
+          libraries: ["places"]
         });
 
-        // Add event listener for when the map has finished loading
-        google.maps.event.addListenerOnce(map.current, 'idle', () => {
-          setMapLoaded(true);
-
-          // Add bus markers
-          buses.forEach((bus) => {
-            if (!map.current || bus.isTest) return; // Skip test bus here, we handle it separately
-            
-            // Create info window content
-            const infoContent = `
-              <div style="padding: 8px; max-width: 200px;">
-                <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
-                <p style="margin-bottom: 4px;">${bus.route}</p>
-                <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
-                <p>ETA: ${bus.eta}</p>
-              </div>
-            `;
-            
-            const infoWindow = new google.maps.InfoWindow({
-              content: infoContent
-            });
-            
-            // Add the marker
-            const busMarker = new google.maps.Marker({
-              position: { lat: bus.coordinates[0], lng: bus.coordinates[1] },
-              map: map.current,
-              title: bus.id,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: bus.id.includes('KA-01') || bus.id.includes('KA-02') ? '#1E40AF' : '#F59E0B',
-                fillOpacity: 0.8,
-                strokeColor: '#FFFFFF',
-                strokeWeight: 2,
-                scale: 10
-              }
-            });
-            
-            // Add click event for info window
-            busMarker.addListener('click', () => {
-              infoWindow.open(map.current, busMarker);
-            });
-            
-            busMarkersRef.current.push(busMarker);
+        await loader.load();
+        console.log("Google Maps API loaded successfully");
+        
+        // Create the map instance
+        if (mapContainer.current && !map.current) {
+          map.current = new google.maps.Map(mapContainer.current, {
+            center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
+            zoom: 11,
+            mapTypeControl: true,
+            streetViewControl: false,
+            fullscreenControl: true,
           });
-        });
+
+          // Add event listener for when the map has finished loading
+          google.maps.event.addListenerOnce(map.current, 'idle', () => {
+            console.log("Map loaded and ready");
+            setMapLoaded(true);
+            toast.success("Map loaded successfully!");
+
+            // Add bus markers
+            buses.forEach((bus) => {
+              if (!map.current || bus.isTest) return; // Skip test bus here
+              
+              const infoContent = `
+                <div style="padding: 8px; max-width: 200px;">
+                  <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
+                  <p style="margin-bottom: 4px;">${bus.route}</p>
+                  <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
+                  <p>ETA: ${bus.eta}</p>
+                </div>
+              `;
+              
+              const infoWindow = new google.maps.InfoWindow({
+                content: infoContent
+              });
+              
+              // Add the marker
+              const busMarker = new google.maps.Marker({
+                position: { lat: bus.coordinates[0], lng: bus.coordinates[1] },
+                map: map.current,
+                title: bus.id,
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  fillColor: bus.id.includes('KA-01') || bus.id.includes('KA-02') ? '#1E40AF' : '#F59E0B',
+                  fillOpacity: 0.8,
+                  strokeColor: '#FFFFFF',
+                  strokeWeight: 2,
+                  scale: 10
+                }
+              });
+              
+              // Add click event for info window
+              busMarker.addListener('click', () => {
+                infoWindow.open(map.current, busMarker);
+              });
+              
+              busMarkersRef.current.push(busMarker);
+            });
+          });
+
+          // Add error handling for map
+          google.maps.event.addListener(map.current, 'error', () => {
+            console.error("Map error occurred");
+            setMapError("Failed to load map properly");
+            toast.error("There was an issue loading the map. Please try again.");
+          });
+        }
+      } catch (error) {
+        console.error("Error initializing Google Maps:", error);
+        setMapError(`Failed to load map: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toast.error("Failed to load Google Maps. Please check your API key and try again.");
       }
-    }).catch(e => {
-      console.error("Error loading Google Maps API", e);
-      toast.error("Failed to load Google Maps. Please try again later.");
-    });
+    };
+
+    initializeMap();
 
     return () => {
       if (watchIdRef.current !== null) {
@@ -378,7 +397,15 @@ const LiveTrackingPreview = () => {
               </div>
             )}
             
-            {!mapLoaded && (
+            {mapError && (
+              <div className="mb-4 p-4 border border-red-300 bg-red-50 rounded-md">
+                <h3 className="font-bold text-red-800">Map Error</h3>
+                <p className="text-red-700">{mapError}</p>
+                <p className="mt-2 text-sm text-red-600">Check browser console for more details.</p>
+              </div>
+            )}
+            
+            {!mapLoaded && !mapError && (
               <div className="mb-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
                 <h3 className="font-bold text-yellow-800">Loading Map...</h3>
                 <p className="mb-2 text-yellow-700">Please wait while we set up the tracking map.</p>
@@ -389,9 +416,9 @@ const LiveTrackingPreview = () => {
             )}
             
             <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
-              <div ref={mapContainer} className="absolute inset-0"></div>
+              <div ref={mapContainer} className="absolute inset-0" style={{ width: '100%', height: '100%' }}></div>
               
-              {!mapLoaded && (
+              {!mapLoaded && !mapError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <div className="bg-white p-6 rounded-lg max-w-md text-center shadow-xl">
                     <h3 className="font-bold text-xl mb-2">Loading Map</h3>
