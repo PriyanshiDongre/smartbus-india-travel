@@ -4,26 +4,30 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BusFront } from "lucide-react";
+import { BusFront, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const handleResendConfirmation = async () => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      setIsLoading(true);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
       });
 
       if (error) {
@@ -32,6 +36,51 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
+      } else {
+        toast({
+          title: "Success",
+          description: "Confirmation email resent. Please check your inbox.",
+        });
+      }
+    } catch (error) {
+      console.error("Resend confirmation error:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setEmailNotConfirmed(false);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        // Handle email not confirmed error specifically
+        if (error.message.toLowerCase().includes("email not confirmed")) {
+          setEmailNotConfirmed(true);
+          toast({
+            title: "Email not confirmed",
+            description: "Please check your inbox for the confirmation email",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Success",
@@ -77,6 +126,26 @@ const Login = () => {
             </Link>
           </p>
         </div>
+        
+        {emailNotConfirmed && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Email not confirmed</AlertTitle>
+            <AlertDescription>
+              Your email address has not been confirmed yet. 
+              Please check your inbox for the confirmation email or 
+              <Button 
+                variant="link" 
+                onClick={handleResendConfirmation}
+                className="p-0 h-auto font-medium text-white underline"
+                disabled={isLoading}
+              >
+                click here to resend
+              </Button>.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="space-y-4">
             <div>
