@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ const Login = () => {
           title: "Success",
           description: "You have been logged in successfully",
         });
+        // Explicitly redirect to the home page
         navigate("/");
       }
     } catch (error) {
