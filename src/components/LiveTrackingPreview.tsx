@@ -1,4 +1,3 @@
-
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +6,20 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
+// Define the proper type for coordinates to match mapboxgl.LngLatLike
+type Coordinates = [number, number]; // Explicitly a tuple with exactly 2 elements
+
+interface Bus {
+  id: string;
+  route: string;
+  location: string;
+  eta: string;
+  occupancy: number;
+  nextStop: string;
+  progress: number;
+  coordinates: Coordinates; // Updated to use our proper type
+}
+
 const LiveTrackingPreview = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -14,7 +27,7 @@ const LiveTrackingPreview = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // In a real app, this would be fetched from an API
-  const buses = [
+  const buses: Bus[] = [
     {
       id: "KA-01-F-5555",
       route: "Bengaluru Central - Electronic City",
@@ -23,7 +36,7 @@ const LiveTrackingPreview = () => {
       occupancy: 65,
       nextStop: "HSR Layout",
       progress: 65,
-      coordinates: [77.623177, 12.935971] // Silk Board coordinates
+      coordinates: [77.623177, 12.935971] // Properly typed as [number, number]
     },
     {
       id: "KA-05-G-7890",
@@ -33,7 +46,7 @@ const LiveTrackingPreview = () => {
       occupancy: 40,
       nextStop: "Kundalahalli Gate",
       progress: 40,
-      coordinates: [77.731700, 12.969300] // ITPL coordinates
+      coordinates: [77.731700, 12.969300] // Properly typed as [number, number]
     },
     {
       id: "KA-02-J-1234",
@@ -43,7 +56,7 @@ const LiveTrackingPreview = () => {
       occupancy: 85,
       nextStop: "Mantri Square",
       progress: 80,
-      coordinates: [77.583862, 13.015578] // Mekhri Circle coordinates
+      coordinates: [77.583862, 13.015578] // Properly typed as [number, number]
     }
   ];
   
@@ -87,7 +100,7 @@ const LiveTrackingPreview = () => {
         markerEl.style.animation = 'pulse 2s infinite';
         markerEl.innerHTML = `<span class="text-xs font-bold">${bus.id.substring(0, 5)}</span>`;
         
-        // Add the marker to the map
+        // Add the marker to the map - coordinates now properly typed
         new mapboxgl.Marker(markerEl)
           .setLngLat(bus.coordinates)
           .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
@@ -102,7 +115,7 @@ const LiveTrackingPreview = () => {
       // Add user location marker
       if (map.current) {
         const userMarker = new mapboxgl.Marker({ color: 'red' })
-          .setLngLat([77.5946, 12.9716]) // Center of Bangalore as default user location
+          .setLngLat([77.5946, 12.9716] as Coordinates) // Now properly typed
           .addTo(map.current);
       }
     });
