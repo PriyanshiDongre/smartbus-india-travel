@@ -1,3 +1,4 @@
+
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,8 +24,8 @@ interface Bus {
 const LiveTrackingPreview = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<google.maps.Map | null>(null);
-  // Use a hardcoded API key or an environment variable instead of user input
-  const googleMapsApiKey = "YOUR_API_KEY"; // Replace with your actual API key for production
+  // This is a placeholder - replace with a valid API key for actual deployment
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
@@ -167,9 +168,14 @@ const LiveTrackingPreview = () => {
       toast.info("Location tracking stopped");
     }
   };
-  
+
   useEffect(() => {
-    if (!googleMapsApiKey) return;
+    if (!googleMapsApiKey) {
+      console.warn("No Google Maps API key provided. The map will not load correctly.");
+      toast.error("Missing Google Maps API key. Please add one to your environment variables.");
+      return;
+    }
+    
     if (!mapContainer.current || map.current) return;
 
     // Initialize Google Maps
@@ -269,6 +275,13 @@ const LiveTrackingPreview = () => {
           <div className="w-full md:w-2/3">
             <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Live Bus Tracking</h2>
             
+            {!googleMapsApiKey && (
+              <div className="mb-4 p-4 border border-red-300 bg-red-50 rounded-md">
+                <h3 className="font-bold text-red-800">Missing API Key</h3>
+                <p className="text-red-700">Please add a Google Maps API key to your environment variables to enable the map functionality.</p>
+              </div>
+            )}
+            
             {!mapLoaded && (
               <div className="mb-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
                 <h3 className="font-bold text-yellow-800">Loading Map...</h3>
@@ -290,6 +303,15 @@ const LiveTrackingPreview = () => {
                   </div>
                 </div>
               )}
+            </div>
+            
+            <div className="mt-4 p-4 border border-amber-300 bg-amber-50 rounded-md">
+              <h3 className="font-bold text-amber-800">How to test tracking:</h3>
+              <ol className="list-decimal pl-5 text-amber-700">
+                <li>Click "Track My Location" to allow GPS access</li>
+                <li>Once your location appears, click "Track This Bus" on any bus card</li>
+                <li>The map will show both your location and the bus position</li>
+              </ol>
             </div>
             
             <div className="flex flex-wrap gap-2 mt-4 justify-center">
@@ -385,6 +407,8 @@ const LiveTrackingPreview = () => {
                         if (mapLoaded && map.current) {
                           map.current.panTo({ lat: bus.coordinates[0], lng: bus.coordinates[1] });
                           map.current.setZoom(14);
+                          
+                          toast.success(`Now tracking ${bus.id} on ${bus.route}`);
                         }
                       }}
                     >
@@ -406,3 +430,4 @@ const LiveTrackingPreview = () => {
 };
 
 export default LiveTrackingPreview;
+
