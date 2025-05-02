@@ -1,4 +1,3 @@
-
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +23,8 @@ interface Bus {
 const LiveTrackingPreview = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<google.maps.Map | null>(null);
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>("");
+  // Use a hardcoded API key or an environment variable instead of user input
+  const googleMapsApiKey = "YOUR_API_KEY"; // Replace with your actual API key for production
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
@@ -181,62 +181,64 @@ const LiveTrackingPreview = () => {
 
     loader.load().then(() => {
       // Create the map instance
-      map.current = new google.maps.Map(mapContainer.current!, {
-        center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
-        zoom: 11,
-        mapTypeControl: true,
-        streetViewControl: false,
-        fullscreenControl: true,
-      });
-
-      // Add event listener for when the map has finished loading
-      google.maps.event.addListenerOnce(map.current, 'idle', () => {
-        setMapLoaded(true);
-
-        // Add bus markers
-        buses.forEach((bus) => {
-          if (!map.current) return;
-          
-          // Create info window content
-          const infoContent = `
-            <div style="padding: 8px; max-width: 200px;">
-              <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
-              <p style="margin-bottom: 4px;">${bus.route}</p>
-              <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
-              <p>ETA: ${bus.eta}</p>
-            </div>
-          `;
-          
-          const infoWindow = new google.maps.InfoWindow({
-            content: infoContent
-          });
-          
-          // Add the marker
-          const busMarker = new google.maps.Marker({
-            position: { lat: bus.coordinates[0], lng: bus.coordinates[1] },
-            map: map.current,
-            title: bus.id,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: bus.id.includes('KA-01') || bus.id.includes('KA-02') ? '#1E40AF' : '#F59E0B',
-              fillOpacity: 0.8,
-              strokeColor: '#FFFFFF',
-              strokeWeight: 2,
-              scale: 10
-            }
-          });
-          
-          // Add click event for info window
-          busMarker.addListener('click', () => {
-            infoWindow.open(map.current, busMarker);
-          });
-          
-          busMarkersRef.current.push(busMarker);
+      if (mapContainer.current) {
+        map.current = new google.maps.Map(mapContainer.current, {
+          center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
+          zoom: 11,
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
         });
-      });
+
+        // Add event listener for when the map has finished loading
+        google.maps.event.addListenerOnce(map.current, 'idle', () => {
+          setMapLoaded(true);
+
+          // Add bus markers
+          buses.forEach((bus) => {
+            if (!map.current) return;
+            
+            // Create info window content
+            const infoContent = `
+              <div style="padding: 8px; max-width: 200px;">
+                <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
+                <p style="margin-bottom: 4px;">${bus.route}</p>
+                <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
+                <p>ETA: ${bus.eta}</p>
+              </div>
+            `;
+            
+            const infoWindow = new google.maps.InfoWindow({
+              content: infoContent
+            });
+            
+            // Add the marker
+            const busMarker = new google.maps.Marker({
+              position: { lat: bus.coordinates[0], lng: bus.coordinates[1] },
+              map: map.current,
+              title: bus.id,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: bus.id.includes('KA-01') || bus.id.includes('KA-02') ? '#1E40AF' : '#F59E0B',
+                fillOpacity: 0.8,
+                strokeColor: '#FFFFFF',
+                strokeWeight: 2,
+                scale: 10
+              }
+            });
+            
+            // Add click event for info window
+            busMarker.addListener('click', () => {
+              infoWindow.open(map.current, busMarker);
+            });
+            
+            busMarkersRef.current.push(busMarker);
+          });
+        });
+      }
     }).catch(e => {
       console.error("Error loading Google Maps API", e);
-      toast.error("Failed to load Google Maps. Please check your API key.");
+      toast.error("Failed to load Google Maps. Please try again later.");
     });
 
     return () => {
@@ -267,44 +269,24 @@ const LiveTrackingPreview = () => {
           <div className="w-full md:w-2/3">
             <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Live Bus Tracking</h2>
             
-            {!googleMapsApiKey && (
+            {!mapLoaded && (
               <div className="mb-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
-                <h3 className="font-bold text-yellow-800">Google Maps API Key Required</h3>
-                <p className="mb-2 text-yellow-700">To see the interactive map, please enter your Google Maps API key:</p>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-smartbus-blue"
-                    value={googleMapsApiKey}
-                    onChange={(e) => setGoogleMapsApiKey(e.target.value)}
-                    placeholder="Enter your Google Maps API key"
-                  />
-                  <Button 
-                    onClick={() => {}}
-                    disabled={!googleMapsApiKey}
-                    className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
-                  >
-                    Apply
-                  </Button>
+                <h3 className="font-bold text-yellow-800">Loading Map...</h3>
+                <p className="mb-2 text-yellow-700">Please wait while we set up the tracking map.</p>
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-smartbus-blue"></div>
                 </div>
-                <p className="mt-2 text-xs text-gray-600">
-                  You can get an API key by signing up at <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-smartbus-blue underline">Google Cloud Console</a>
-                </p>
               </div>
             )}
             
             <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
-              {!googleMapsApiKey && (
-                <div className="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=12.9716,77.5946&zoom=11&size=800x400&key=YOUR_API_KEY')] bg-cover bg-center opacity-70"></div>
-              )}
-              
               <div ref={mapContainer} className="absolute inset-0"></div>
               
-              {!googleMapsApiKey && (
+              {!mapLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <div className="bg-white p-6 rounded-lg max-w-md text-center shadow-xl">
-                    <h3 className="font-bold text-xl mb-2">Interactive Map Disabled</h3>
-                    <p>Enter your Google Maps API key above to enable the interactive map and see live bus locations.</p>
+                    <h3 className="font-bold text-xl mb-2">Loading Map</h3>
+                    <p>Please wait while we initialize the tracking system...</p>
                   </div>
                 </div>
               )}
@@ -313,18 +295,16 @@ const LiveTrackingPreview = () => {
             <div className="flex flex-wrap gap-2 mt-4 justify-center">
               <Button 
                 className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
-                disabled={!googleMapsApiKey}
               >
                 Open Full Map
               </Button>
               
-              {googleMapsApiKey && (
+              {mapLoaded && (
                 <>
                   <Button 
                     variant="outline" 
                     className={`${isLocating ? 'border-red-500 text-red-500' : 'border-green-600 text-green-600'}`}
                     onClick={isLocating ? stopLocationTracking : startLocationTracking}
-                    disabled={!mapLoaded}
                   >
                     {isLocating ? (
                       <>
