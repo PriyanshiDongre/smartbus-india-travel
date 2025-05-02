@@ -1,3 +1,4 @@
+
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { toast } from "@/components/ui/sonner";
 
 // Define the proper type for coordinates to match mapboxgl.LngLatLike
 type Coordinates = [number, number]; // Explicitly a tuple with exactly 2 elements
@@ -25,6 +27,11 @@ const LiveTrackingPreview = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   // In a real app, this would be fetched from an API
   const buses: Bus[] = [
@@ -59,6 +66,107 @@ const LiveTrackingPreview = () => {
       coordinates: [77.583862, 13.015578] // Properly typed as [number, number]
     }
   ];
+
+  // GPS functionality to track user location
+  const startLocationTracking = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(null);
+
+    // Get initial position
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        const coordinates: Coordinates = [longitude, latitude];
+        setUserLocation(coordinates);
+        
+        if (map.current) {
+          map.current.flyTo({
+            center: coordinates,
+            zoom: 15,
+            essential: true
+          });
+          
+          // Update or create user marker
+          if (userMarkerRef.current) {
+            userMarkerRef.current.setLngLat(coordinates);
+          } else if (map.current) {
+            const userMarkerEl = document.createElement('div');
+            userMarkerEl.className = "bg-blue-500 border-2 border-white shadow-lg";
+            userMarkerEl.style.width = "20px";
+            userMarkerEl.style.height = "20px";
+            userMarkerEl.style.borderRadius = "50%";
+            userMarkerEl.style.animation = "pulse 1.5s infinite";
+            
+            userMarkerRef.current = new mapboxgl.Marker({ element: userMarkerEl })
+              .setLngLat(coordinates)
+              .addTo(map.current);
+          }
+          
+          toast.success("Your location has been found!");
+        }
+      },
+      (error) => {
+        let errorMsg = "Failed to get your location";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMsg = "You denied the request for Geolocation";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMsg = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMsg = "The request to get your location timed out";
+            break;
+        }
+        
+        setLocationError(errorMsg);
+        setIsLocating(false);
+        toast.error(errorMsg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+    
+    // Set up continuous tracking
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        const coordinates: Coordinates = [longitude, latitude];
+        setUserLocation(coordinates);
+        
+        if (userMarkerRef.current && map.current) {
+          userMarkerRef.current.setLngLat(coordinates);
+        }
+      },
+      (error) => {
+        console.error("Tracking error:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    );
+  };
+  
+  const stopLocationTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      setIsLocating(false);
+      toast.info("Location tracking stopped");
+    }
+  };
   
   useEffect(() => {
     if (!mapboxToken) return;
@@ -111,16 +219,13 @@ const LiveTrackingPreview = () => {
           ))
           .addTo(map.current);
       });
-      
-      // Add user location marker
-      if (map.current) {
-        const userMarker = new mapboxgl.Marker({ color: 'red' })
-          .setLngLat([77.5946, 12.9716] as Coordinates) // Now properly typed
-          .addTo(map.current);
-      }
     });
 
     return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -179,14 +284,62 @@ const LiveTrackingPreview = () => {
               )}
             </div>
             
-            <div className="flex justify-center mt-4">
+            <div className="flex flex-wrap gap-2 mt-4 justify-center">
               <Button 
                 className="bg-smartbus-blue hover:bg-smartbus-dark-blue"
                 disabled={!mapboxToken}
               >
                 Open Full Map
               </Button>
+              
+              {mapboxToken && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className={`${isLocating ? 'border-red-500 text-red-500' : 'border-green-600 text-green-600'}`}
+                    onClick={isLocating ? stopLocationTracking : startLocationTracking}
+                    disabled={!mapLoaded}
+                  >
+                    {isLocating ? (
+                      <>
+                        <span className="mr-2 animate-ping h-2 w-2 rounded-full bg-red-400 inline-block"></span>
+                        Stop Location Tracking
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="h-4 w-4 mr-2" />
+                        Track My Location
+                      </>
+                    )}
+                  </Button>
+                  
+                  {userLocation && (
+                    <Button 
+                      variant="secondary"
+                      onClick={() => {
+                        if (map.current && userLocation) {
+                          map.current.flyTo({
+                            center: userLocation,
+                            zoom: 15,
+                            essential: true
+                          });
+                        }
+                      }}
+                      disabled={!userLocation}
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Center on My Location
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
+            
+            {locationError && (
+              <div className="mt-2 p-2 bg-red-50 text-red-700 text-sm rounded border border-red-200">
+                {locationError}
+              </div>
+            )}
           </div>
           
           {/* Live Buses List */}
