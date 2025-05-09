@@ -7,6 +7,7 @@ export const useLocation = () => {
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
 
   // GPS functionality to track user location
@@ -19,14 +20,23 @@ export const useLocation = () => {
 
     setIsLocating(true);
     setLocationError(null);
+    toast.info("Requesting your location...");
 
     // Get initial position
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
         const coordinates: Coordinates = [latitude, longitude];
         setUserLocation(coordinates);
-        toast.success("Your location has been found!");
+        setLocationAccuracy(accuracy);
+        
+        if (accuracy <= 20) {
+          toast.success(`Location found with high accuracy (±${Math.round(accuracy)}m)`);
+        } else if (accuracy <= 100) {
+          toast.success(`Location found with moderate accuracy (±${Math.round(accuracy)}m)`);
+        } else {
+          toast.warning(`Location found with low accuracy (±${Math.round(accuracy)}m). Try moving to an open area.`);
+        }
       },
       (error) => {
         let errorMsg = "Failed to get your location";
@@ -49,25 +59,29 @@ export const useLocation = () => {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0
       }
     );
     
-    // Set up continuous tracking
+    // Set up continuous tracking with improved settings
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
         const coordinates: Coordinates = [latitude, longitude];
         setUserLocation(coordinates);
+        setLocationAccuracy(accuracy);
+        
+        // Log accuracy for debugging
+        console.log(`Location updated: Accuracy ±${accuracy}m`, coordinates);
       },
       (error) => {
         console.error("Tracking error:", error);
       },
       {
         enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
+        timeout: 10000,
+        maximumAge: 5000,  // Accept positions up to 5 seconds old
       }
     );
   };
@@ -77,6 +91,7 @@ export const useLocation = () => {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
       setIsLocating(false);
+      setLocationAccuracy(null);
       toast.info("Location tracking stopped");
     }
   };
@@ -94,6 +109,7 @@ export const useLocation = () => {
     userLocation,
     locationError,
     isLocating,
+    locationAccuracy,
     startLocationTracking,
     stopLocationTracking,
   };

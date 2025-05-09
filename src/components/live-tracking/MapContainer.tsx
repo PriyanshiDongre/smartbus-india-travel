@@ -25,6 +25,7 @@ interface MapContainerProps {
   userLocation: Coordinates | null;
   isLocating: boolean;
   locationError: string | null;
+  locationAccuracy?: number | null;
   isTestBusEnabled: boolean;
   mapLoaded: boolean;
   mapError: string | null;
@@ -37,6 +38,7 @@ export const MapContainer = ({
   userLocation,
   isLocating,
   locationError,
+  locationAccuracy = null,
   isTestBusEnabled,
   mapLoaded,
   mapError,
@@ -46,6 +48,7 @@ export const MapContainer = ({
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const accuracyCircleRef = useRef<L.Circle | null>(null);
   const testBusMarkerRef = useRef<L.Marker | null>(null);
   const busMarkersRef = useRef<L.Marker[]>([]);
 
@@ -57,12 +60,20 @@ export const MapContainer = ({
 
     try {
       // Create the map instance
-      map.current = L.map(mapContainer.current).setView([12.9716, 77.5946], 11); // Bangalore center
+      map.current = L.map(mapContainer.current, {
+        zoomControl: false,  // We'll add it in a better position
+        attributionControl: true,
+        minZoom: 5,
+        maxZoom: 19
+      }).setView([12.9716, 77.5946], 11); // Bangalore center
       
       // Add OpenStreetMap tile layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map.current);
+      
+      // Add zoom control in a better position
+      L.control.zoom({ position: 'bottomright' }).addTo(map.current);
       
       console.log("Leaflet map initialized successfully");
 
@@ -109,39 +120,79 @@ export const MapContainer = ({
   useEffect(() => {
     if (!map.current || !userLocation) return;
 
+    console.log("Updating user location on map:", userLocation, "Accuracy:", locationAccuracy);
+    
+    // Create a custom blue icon for user location with pulsing effect
+    const userLocationIcon = L.divIcon({
+      className: 'user-location-marker',
+      html: `
+        <div class="relative">
+          <div class="absolute w-6 h-6 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
+          <div class="absolute w-4 h-4 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
+        </div>
+      `,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
     // Update or create user marker
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
     } else {
-      // Create a custom blue icon for user location
-      const blueIcon = L.divIcon({
-        className: 'blue-user-marker',
-        html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8]
-      });
-      
       userMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
-        icon: blueIcon,
+        icon: userLocationIcon,
         title: "Your Location"
       }).addTo(map.current);
+      
+      userMarkerRef.current.bindPopup("Your current location").openPopup();
+      
+      // Close popup after 3 seconds
+      setTimeout(() => {
+        userMarkerRef.current?.closePopup();
+      }, 3000);
+    }
+    
+    // Show accuracy circle if we have accuracy data
+    if (locationAccuracy) {
+      if (accuracyCircleRef.current) {
+        accuracyCircleRef.current.setLatLng([userLocation[0], userLocation[1]]);
+        accuracyCircleRef.current.setRadius(locationAccuracy);
+      } else {
+        accuracyCircleRef.current = L.circle([userLocation[0], userLocation[1]], {
+          radius: locationAccuracy,
+          color: '#3b82f6',
+          fillColor: '#60a5fa',
+          fillOpacity: 0.15,
+          weight: 1
+        }).addTo(map.current);
+      }
     }
     
     // If test bus is enabled, update its position too
     if (isTestBusEnabled) {
+      // Create a custom bus icon
+      const busIcon = L.divIcon({
+        className: 'test-bus-icon',
+        html: `
+          <div class="bg-orange-500 p-1 rounded shadow-md transform rotate-45">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 5H16A5 5 0 0121 10V19H3V10A5 5 0 018 5Z"></path>
+              <path d="M19 10H5"></path>
+              <path d="M5 14H19"></path>
+              <path d="M7 19V21"></path>
+              <path d="M17 19V21"></path>
+            </svg>
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+      
       if (testBusMarkerRef.current) {
         testBusMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
       } else {
-        // Create a custom orange icon for test bus
-        const orangeIcon = L.divIcon({
-          className: 'orange-test-bus',
-          html: '<div class="w-5 h-5 bg-orange-500 rotate-45 transform origin-center border-2 border-white"></div>',
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
-        });
-        
         testBusMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
-          icon: orangeIcon,
+          icon: busIcon,
           title: "Test Bus (Your Phone)"
         }).addTo(map.current);
         
@@ -166,12 +217,20 @@ export const MapContainer = ({
       map.current.removeLayer(testBusMarkerRef.current);
       testBusMarkerRef.current = null;
     }
-  }, [userLocation, isTestBusEnabled]);
+    
+    // Center map if this is the first location update
+    if (userLocation && !map.current.getBounds().contains([userLocation[0], userLocation[1]])) {
+      centerOnLocation();
+    }
+  }, [userLocation, isTestBusEnabled, locationAccuracy]);
 
   // Center map on location
   const centerOnLocation = () => {
     if (map.current && userLocation) {
-      map.current.setView([userLocation[0], userLocation[1]], 15);
+      map.current.setView([userLocation[0], userLocation[1]], 15, {
+        animate: true,
+        duration: 1 // 1 second animation
+      });
     }
   };
 
@@ -189,14 +248,28 @@ export const MapContainer = ({
       
       <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
         <div ref={mapContainer} className="absolute inset-0" style={{ width: '100%', height: '100%' }}></div>
+        
+        {userLocation && locationAccuracy && (
+          <div className="absolute top-2 left-2 bg-white bg-opacity-80 p-2 rounded shadow-sm text-xs z-[1000] max-w-[200px]">
+            <div className="font-semibold">Location Accuracy</div>
+            <div className={`
+              ${locationAccuracy <= 20 ? 'text-green-600' : 
+                locationAccuracy <= 100 ? 'text-amber-600' : 'text-red-600'}
+            `}>
+              ±{Math.round(locationAccuracy)}m {locationAccuracy <= 20 ? '(High)' : 
+                locationAccuracy <= 100 ? '(Moderate)' : '(Low)'}
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="mt-4 p-4 border border-amber-300 bg-amber-50 rounded-md">
-        <h3 className="font-bold text-amber-800">How to test tracking:</h3>
+        <h3 className="font-bold text-amber-800">How to improve location accuracy:</h3>
         <ol className="list-decimal pl-5 text-amber-700">
-          <li>Click "Track My Location" to allow GPS access</li>
-          <li>Once your location appears, click "Track Test Bus" at the bottom of the list</li>
-          <li>The map will show a test bus that follows your phone's movement</li>
+          <li>Make sure you're outdoors or near windows</li>
+          <li>Enable high-accuracy mode in your device settings</li>
+          <li>Wait a few seconds for GPS signal to stabilize</li>
+          <li>Try a different browser if issues persist</li>
         </ol>
       </div>
       

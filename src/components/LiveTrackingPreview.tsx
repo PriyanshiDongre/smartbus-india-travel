@@ -18,6 +18,7 @@ const LiveTrackingPreview = () => {
     userLocation, 
     locationError, 
     isLocating, 
+    locationAccuracy,
     startLocationTracking, 
     stopLocationTracking 
   } = useLocation();
@@ -62,6 +63,7 @@ const LiveTrackingPreview = () => {
             userLocation={userLocation}
             isLocating={isLocating}
             locationError={locationError}
+            locationAccuracy={locationAccuracy}
             isTestBusEnabled={isTestBusEnabled}
             mapLoaded={mapLoaded}
             mapError={mapError}
