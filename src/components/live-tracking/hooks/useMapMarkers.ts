@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from 'react';
 import L from 'leaflet';
 import { toast } from "@/components/ui/sonner";
@@ -28,6 +27,7 @@ export const useMapMarkers = (
   const isFirstLocationUpdate = useRef<boolean>(true);
   const userLocationRef = useRef<Coordinates | null>(null);
   const updateTimeoutRef = useRef<number | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
 
   // Initialize the map
   useEffect(() => {
@@ -36,12 +36,15 @@ export const useMapMarkers = (
     if (!mapContainerRef.current || mapRef.current) return;
 
     try {
-      // Create the map instance
+      // Create the map instance with improved settings for stability
       mapRef.current = L.map(mapContainerRef.current, {
-        zoomControl: false,  // We'll add it in a better position
+        zoomControl: false,
         attributionControl: true,
         minZoom: 5,
-        maxZoom: 19
+        maxZoom: 19,
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        wheelDebounceTime: 150  // Increase debounce for mouse wheel
       }).setView([12.9716, 77.5946], 11); // Bangalore center
       
       // Add OpenStreetMap tile layer
@@ -86,23 +89,32 @@ export const useMapMarkers = (
     };
   }, [buses, mapContainerRef]);
 
-  // Debounced update function to prevent too frequent updates
+  // Improved debounced update function with time-based throttling
   const debouncedUpdateUserLocation = (location: Coordinates) => {
     // Store the latest location for reference
     userLocationRef.current = location;
+    
+    // Implement time-based throttling (max once per 500ms)
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
     
     // Clear any pending updates
     if (updateTimeoutRef.current !== null) {
       window.clearTimeout(updateTimeoutRef.current);
     }
     
+    // Determine delay based on time since last update
+    // Use shorter delay if it's been a while since last update
+    const delay = timeSinceLastUpdate > 1500 ? 50 : 500;
+    
     // Set a new timeout for the update
     updateTimeoutRef.current = window.setTimeout(() => {
       // Only update if this is still the latest location
       if (userLocationRef.current === location && mapRef.current) {
         updateUserLocationMarkers(location);
+        lastUpdateTimeRef.current = Date.now();
       }
-    }, 100); // Small delay to batch updates
+    }, delay); 
   };
   
   // Function to update all user location related markers
@@ -197,11 +209,11 @@ export const useMapMarkers = (
     }
   };
 
-  // Update user marker when location changes
+  // Update user marker when location changes with improved filtering
   useEffect(() => {
     if (!mapRef.current || !userLocation) return;
     
-    // Use the debounced update function
+    // Use the debounced update function with rate limiting
     debouncedUpdateUserLocation(userLocation);
   }, [userLocation, isTestBusEnabled, locationAccuracy]);
 
@@ -231,12 +243,13 @@ export const useMapMarkers = (
     };
   }, [mapRef]);
 
-  // Center map on location
+  // Center map on location with improved smoothness
   const centerOnLocation = () => {
     if (mapRef.current && userLocation) {
       mapRef.current.setView([userLocation[0], userLocation[1]], 15, {
         animate: true,
-        duration: 1 // 1 second animation
+        duration: 1.5, // Increased animation duration for smoother transition
+        easeLinearity: 0.25 // More gradual easing
       });
     }
   };

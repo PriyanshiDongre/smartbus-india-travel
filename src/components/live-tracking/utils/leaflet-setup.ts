@@ -14,16 +14,23 @@ const DefaultIcon = L.icon({
 
 export const setupLeaflet = () => {
   L.Marker.prototype.options.icon = DefaultIcon;
+
+  // Improve map rendering performance
+  if (L.Browser.mobile) {
+    // Disable animations on mobile for better performance
+    L.DomUtil.disableTextSelection = function() { return this; };
+    L.DomUtil.disableImageDrag = function() { return this; };
+  }
 };
 
-// Create user location marker icon with enhanced visual point and stabilized appearance
+// Create user location marker icon with enhanced visual stability
 export const createUserLocationIcon = () => {
   return L.divIcon({
     className: 'user-location-marker',
     html: `
       <div class="relative">
-        <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
-        <div class="absolute w-6 h-6 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
+        <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-25 animate-pulse"></div>
+        <div class="absolute w-6 h-6 bg-blue-500 rounded-full left-1 top-1 border-2 border-white"></div>
         <div class="absolute w-2 h-2 bg-white rounded-full left-3 top-3"></div>
       </div>
     `,
@@ -35,7 +42,7 @@ export const createUserLocationIcon = () => {
 // Create center point marker for precise location pinpointing
 export const createCenterPointMarker = (latlng: L.LatLngExpression) => {
   return L.circleMarker(latlng, {
-    radius: 3,
+    radius: 2,
     fillColor: '#ffffff',
     color: '#3b82f6',
     weight: 2,
@@ -45,13 +52,13 @@ export const createCenterPointMarker = (latlng: L.LatLngExpression) => {
   });
 };
 
-// Create accuracy circle to show GPS accuracy
+// Create accuracy circle to show GPS accuracy with improved styling
 export const createAccuracyCircle = (latlng: L.LatLngExpression, radius: number) => {
   return L.circle(latlng, {
     radius: radius,
     color: '#3b82f6',
     fillColor: '#60a5fa',
-    fillOpacity: 0.15,
+    fillOpacity: 0.1,
     weight: 1,
     interactive: false // Make it non-interactive
   });

@@ -10,8 +10,9 @@ export const useLocation = () => {
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastPositionRef = useRef<Coordinates | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
 
-  // GPS functionality to track user location
+  // GPS functionality to track user location with improved filtering
   const startLocationTracking = () => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by your browser");
@@ -23,7 +24,7 @@ export const useLocation = () => {
     setLocationError(null);
     toast.info("Requesting your location...");
 
-    // Get initial position
+    // Get initial position with improved timeout and accuracy settings
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
@@ -31,6 +32,7 @@ export const useLocation = () => {
         setUserLocation(coordinates);
         lastPositionRef.current = coordinates;
         setLocationAccuracy(accuracy);
+        lastUpdateTimeRef.current = Date.now();
         
         if (accuracy <= 20) {
           toast.success(`Location found with high accuracy (±${Math.round(accuracy)}m)`);
@@ -71,26 +73,36 @@ export const useLocation = () => {
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
         const newCoordinates: Coordinates = [latitude, longitude];
+        const now = Date.now();
         
-        // Filter out small movements to prevent jitter
+        // Filter out small movements and implement time-based throttling
         if (lastPositionRef.current) {
           const [lastLat, lastLng] = lastPositionRef.current;
           const distanceChange = calculateDistance(lastLat, lastLng, latitude, longitude);
+          const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
           
-          // Only update if position changed significantly (more than 2 meters) or accuracy improved
-          if (distanceChange > 2 || 
-              (locationAccuracy && accuracy < locationAccuracy * 0.8)) {
+          // Only update if:
+          // 1. Position changed significantly (more than 5 meters) or
+          // 2. Accuracy improved significantly or
+          // 3. It's been at least 3 seconds since last update (to prevent total freezing)
+          if (distanceChange > 5 || 
+              (locationAccuracy && accuracy < locationAccuracy * 0.7) ||
+              timeSinceLastUpdate > 3000) {
+            
             setUserLocation(newCoordinates);
             lastPositionRef.current = newCoordinates;
             setLocationAccuracy(accuracy);
-            console.log(`Significant location update: Accuracy ±${accuracy}m, Distance moved: ${distanceChange.toFixed(2)}m`);
+            lastUpdateTimeRef.current = now;
+            
+            console.log(`Location update: Accuracy ±${accuracy}m, Distance moved: ${distanceChange.toFixed(2)}m, Time since last: ${(timeSinceLastUpdate/1000).toFixed(1)}s`);
           } else {
-            console.log(`Filtered minor location update: Accuracy ±${accuracy}m, Distance moved: ${distanceChange.toFixed(2)}m`);
+            console.log(`Filtered location update: Accuracy ±${accuracy}m, Distance: ${distanceChange.toFixed(2)}m, Time: ${(timeSinceLastUpdate/1000).toFixed(1)}s`);
           }
         } else {
           setUserLocation(newCoordinates);
           lastPositionRef.current = newCoordinates;
           setLocationAccuracy(accuracy);
+          lastUpdateTimeRef.current = now;
         }
       },
       (error) => {
@@ -99,7 +111,7 @@ export const useLocation = () => {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 5000,  // Accept positions up to 5 seconds old
+        maximumAge: 6000,  // Accept positions up to 6 seconds old to reduce updates
       }
     );
   };
@@ -109,7 +121,6 @@ export const useLocation = () => {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
       setIsLocating(false);
-      setLocationAccuracy(null);
       toast.info("Location tracking stopped");
     }
   };
