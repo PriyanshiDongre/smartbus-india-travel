@@ -16,14 +16,14 @@ export const setupLeaflet = () => {
   L.Marker.prototype.options.icon = DefaultIcon;
 };
 
-// Create user location marker icon with more stable animation
+// Create user location marker icon with enhanced visual point
 export const createUserLocationIcon = () => {
   return L.divIcon({
     className: 'user-location-marker',
     html: `
       <div class="relative">
-        <div class="absolute w-6 h-6 bg-blue-500 rounded-full opacity-30 animate-pulse"></div>
-        <div class="absolute w-4 h-4 bg-blue-600 rounded-full left-1 top-1 border-2 border-white shadow-md"></div>
+        <div class="absolute w-6 h-6 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
+        <div class="absolute w-4 h-4 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
         <div class="absolute w-2 h-2 bg-white rounded-full left-2 top-2"></div>
       </div>
     `,
@@ -37,7 +37,7 @@ export const createBusIcon = () => {
   return L.divIcon({
     className: 'test-bus-icon',
     html: `
-      <div class="bg-orange-500 p-1 rounded shadow-md transform">
+      <div class="bg-orange-500 p-1 rounded shadow-md transform rotate-45">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 5H16A5 5 0 0121 10V19H3V10A5 5 0 018 5Z"></path>
           <path d="M19 10H5"></path>

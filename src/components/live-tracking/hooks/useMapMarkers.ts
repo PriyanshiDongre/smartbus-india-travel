@@ -17,8 +17,7 @@ export const useMapMarkers = (
   const accuracyCircleRef = useRef<L.Circle | null>(null);
   const testBusMarkerRef = useRef<L.Marker | null>(null);
   const busMarkersRef = useRef<L.Marker[]>([]);
-  const lastLocationRef = useRef<Coordinates | null>(null);
-  const locationUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const centerPointRef = useRef<L.CircleMarker | null>(null);
 
   // Initialize the map
   useEffect(() => {
@@ -77,119 +76,111 @@ export const useMapMarkers = (
     };
   }, [buses, mapContainerRef]);
 
-  // Update user marker when location changes - with stabilization logic
+  // Update user marker when location changes
   useEffect(() => {
     if (!mapRef.current || !userLocation) return;
-    
-    // Calculate distance if we have a previous location
-    let shouldUpdate = true;
-    if (lastLocationRef.current) {
-      const [prevLat, prevLng] = lastLocationRef.current;
-      const [newLat, newLng] = userLocation;
-      
-      // Calculate distance (in meters) between previous and new location
-      const distance = mapRef.current.distance(
-        [prevLat, prevLng],
-        [newLat, newLng]
-      );
-      
-      // Only update if the distance is significant (more than 2 meters)
-      // or if it's been a while since our last update
-      shouldUpdate = distance > 2;
-    }
-    
-    if (!shouldUpdate) {
-      return; // Skip update if location hasn't changed enough
-    }
-    
-    // Store current location for next comparison
-    lastLocationRef.current = userLocation;
-    
-    // Debounce location updates to prevent rapid refreshes
-    if (locationUpdateTimeoutRef.current) {
-      clearTimeout(locationUpdateTimeoutRef.current);
-    }
-    
-    locationUpdateTimeoutRef.current = setTimeout(() => {
-      console.log("Updating user location on map:", userLocation, "Accuracy:", locationAccuracy);
-      
-      // Create a custom blue icon for user location with pulsing effect
-      const userLocationIcon = createUserLocationIcon();
 
-      // Update or create user marker
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
+    console.log("Updating user location on map:", userLocation, "Accuracy:", locationAccuracy);
+    
+    // Create a custom blue icon for user location with pulsing effect
+    const userLocationIcon = createUserLocationIcon();
+
+    // Update or create user marker
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
+    } else {
+      userMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
+        icon: userLocationIcon,
+        title: "Your Location"
+      }).addTo(mapRef.current);
+      
+      userMarkerRef.current.bindPopup("Your current location").openPopup();
+      
+      // Close popup after 3 seconds
+      setTimeout(() => {
+        userMarkerRef.current?.closePopup();
+      }, 3000);
+    }
+
+    // Add or update center point marker for precise location pinpointing
+    if (centerPointRef.current) {
+      centerPointRef.current.setLatLng([userLocation[0], userLocation[1]]);
+    } else {
+      centerPointRef.current = L.circleMarker([userLocation[0], userLocation[1]], {
+        radius: 3,
+        fillColor: '#ffffff',
+        color: '#3b82f6',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 1
+      }).addTo(mapRef.current);
+    }
+    
+    // Show accuracy circle if we have accuracy data
+    if (locationAccuracy) {
+      if (accuracyCircleRef.current) {
+        accuracyCircleRef.current.setLatLng([userLocation[0], userLocation[1]]);
+        accuracyCircleRef.current.setRadius(locationAccuracy);
       } else {
-        userMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
-          icon: userLocationIcon,
-          title: "Your Location",
-          zIndexOffset: 1000 // Ensure user marker is on top
+        accuracyCircleRef.current = L.circle([userLocation[0], userLocation[1]], {
+          radius: locationAccuracy,
+          color: '#3b82f6',
+          fillColor: '#60a5fa',
+          fillOpacity: 0.15,
+          weight: 1
+        }).addTo(mapRef.current);
+      }
+    }
+    
+    // If test bus is enabled, update its position too
+    if (isTestBusEnabled) {
+      // Create a custom bus icon
+      const busIcon = createBusIcon();
+      
+      if (testBusMarkerRef.current) {
+        testBusMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
+      } else {
+        testBusMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
+          icon: busIcon,
+          title: "Test Bus (Your Phone)"
         }).addTo(mapRef.current);
         
-        userMarkerRef.current.bindPopup("Your current location");
-      }
-      
-      // Show accuracy circle if we have accuracy data
-      if (locationAccuracy) {
-        if (accuracyCircleRef.current) {
-          accuracyCircleRef.current.setLatLng([userLocation[0], userLocation[1]]);
-          accuracyCircleRef.current.setRadius(locationAccuracy);
-        } else {
-          accuracyCircleRef.current = L.circle([userLocation[0], userLocation[1]], {
-            radius: locationAccuracy,
-            color: '#3b82f6',
-            fillColor: '#60a5fa',
-            fillOpacity: 0.15,
-            weight: 1
-          }).addTo(mapRef.current);
-        }
-      }
-      
-      // If test bus is enabled, update its position too with same debounce
-      if (isTestBusEnabled) {
-        // Create a custom bus icon
-        const busIcon = createBusIcon();
+        // Create popup for test bus
+        const infoContent = createTestBusPopupContent();
         
-        if (testBusMarkerRef.current) {
-          testBusMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
-        } else {
-          testBusMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
-            icon: busIcon,
-            title: "Test Bus (Your Phone)"
-          }).addTo(mapRef.current);
-          
-          // Create popup for test bus
-          const infoContent = createTestBusPopupContent();
-          testBusMarkerRef.current.bindPopup(infoContent);
-        }
-      } else if (!isTestBusEnabled && testBusMarkerRef.current && mapRef.current) {
-        mapRef.current.removeLayer(testBusMarkerRef.current);
-        testBusMarkerRef.current = null;
+        testBusMarkerRef.current.bindPopup(infoContent).openPopup();
+        
+        // Close popup after a few seconds
+        setTimeout(() => {
+          testBusMarkerRef.current?.closePopup();
+        }, 5000);
       }
-    }, 150); // Wait for 150ms before updating markers to avoid constant refreshing
-    
-    // Center map on first location detection
-    if (userLocation && mapRef.current && !mapRef.current.getBounds().contains([userLocation[0], userLocation[1]])) {
-      mapRef.current.setView([userLocation[0], userLocation[1]], 15, {
-        animate: true,
-        duration: 1 // 1 second animation
-      });
+    } else if (!isTestBusEnabled && testBusMarkerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(testBusMarkerRef.current);
+      testBusMarkerRef.current = null;
     }
     
-    return () => {
-      if (locationUpdateTimeoutRef.current) {
-        clearTimeout(locationUpdateTimeoutRef.current);
-      }
-    };
+    // Center map if this is the first location update
+    if (userLocation && mapRef.current && !mapRef.current.getBounds().contains([userLocation[0], userLocation[1]])) {
+      centerOnLocation();
+    }
   }, [userLocation, isTestBusEnabled, locationAccuracy, mapRef]);
 
-  // Center map on location with smooth animation
+  // Clean up markers when component unmounts
+  useEffect(() => {
+    return () => {
+      if (centerPointRef.current && mapRef.current) {
+        mapRef.current.removeLayer(centerPointRef.current);
+      }
+    };
+  }, [mapRef]);
+
+  // Center map on location
   const centerOnLocation = () => {
     if (mapRef.current && userLocation) {
       mapRef.current.setView([userLocation[0], userLocation[1]], 15, {
         animate: true,
-        duration: 0.8, // Slightly faster animation
-        easeLinearity: 0.5 // More linear animation (less bounce)
+        duration: 1 // 1 second animation
       });
     }
   };
