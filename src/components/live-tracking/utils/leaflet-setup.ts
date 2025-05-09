@@ -24,7 +24,7 @@ export const createUserLocationIcon = () => {
       <div class="relative">
         <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
         <div class="absolute w-6 h-6 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
-        <div class="absolute w-3 h-3 bg-white rounded-full left-[10px] top-[10px]"></div>
+        <div class="absolute w-2 h-2 bg-white rounded-full left-3 top-3"></div>
       </div>
     `,
     iconSize: [32, 32],
@@ -35,10 +35,10 @@ export const createUserLocationIcon = () => {
 // Create center point marker for precise location pinpointing
 export const createCenterPointMarker = (latlng: L.LatLngExpression) => {
   return L.circleMarker(latlng, {
-    radius: 4,
+    radius: 3,
     fillColor: '#ffffff',
     color: '#3b82f6',
-    weight: 3,
+    weight: 2,
     opacity: 1,
     fillOpacity: 1,
     interactive: false // Make it non-interactive to prevent interference with clicks
