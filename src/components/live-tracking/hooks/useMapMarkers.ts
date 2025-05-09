@@ -17,6 +17,7 @@ export const useMapMarkers = (
   const accuracyCircleRef = useRef<L.Circle | null>(null);
   const testBusMarkerRef = useRef<L.Marker | null>(null);
   const busMarkersRef = useRef<L.Marker[]>([]);
+  const centerPointRef = useRef<L.CircleMarker | null>(null);
 
   // Initialize the map
   useEffect(() => {
@@ -100,6 +101,20 @@ export const useMapMarkers = (
         userMarkerRef.current?.closePopup();
       }, 3000);
     }
+
+    // Add or update center point marker for precise location pinpointing
+    if (centerPointRef.current) {
+      centerPointRef.current.setLatLng([userLocation[0], userLocation[1]]);
+    } else {
+      centerPointRef.current = L.circleMarker([userLocation[0], userLocation[1]], {
+        radius: 3,
+        fillColor: '#ffffff',
+        color: '#3b82f6',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 1
+      }).addTo(mapRef.current);
+    }
     
     // Show accuracy circle if we have accuracy data
     if (locationAccuracy) {
@@ -150,6 +165,15 @@ export const useMapMarkers = (
       centerOnLocation();
     }
   }, [userLocation, isTestBusEnabled, locationAccuracy, mapRef]);
+
+  // Clean up markers when component unmounts
+  useEffect(() => {
+    return () => {
+      if (centerPointRef.current && mapRef.current) {
+        mapRef.current.removeLayer(centerPointRef.current);
+      }
+    };
+  }, [mapRef]);
 
   // Center map on location
   const centerOnLocation = () => {

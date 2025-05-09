@@ -16,7 +16,7 @@ export const setupLeaflet = () => {
   L.Marker.prototype.options.icon = DefaultIcon;
 };
 
-// Create user location marker icon
+// Create user location marker icon with enhanced visual point
 export const createUserLocationIcon = () => {
   return L.divIcon({
     className: 'user-location-marker',
@@ -24,6 +24,7 @@ export const createUserLocationIcon = () => {
       <div class="relative">
         <div class="absolute w-6 h-6 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
         <div class="absolute w-4 h-4 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
+        <div class="absolute w-2 h-2 bg-white rounded-full left-2 top-2"></div>
       </div>
     `,
     iconSize: [24, 24],
