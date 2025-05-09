@@ -3,11 +3,24 @@ import { useEffect, useRef } from "react";
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import { Loader } from "@googlemaps/js-api-loader";
 import { Coordinates, Bus } from "./types";
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icons in Leaflet
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Fix the default icon issue in Leaflet
+const DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface MapContainerProps {
-  googleMapsApiKey: string;
   buses: Bus[];
   userLocation: Coordinates | null;
   isLocating: boolean;
@@ -20,7 +33,6 @@ interface MapContainerProps {
 }
 
 export const MapContainer = ({
-  googleMapsApiKey,
   buses,
   userLocation,
   isLocating,
@@ -32,121 +44,66 @@ export const MapContainer = ({
   stopLocationTracking,
 }: MapContainerProps) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
-  const map = useRef<google.maps.Map | null>(null);
-  const userMarkerRef = useRef<google.maps.Marker | null>(null);
-  const testBusMarkerRef = useRef<google.maps.Marker | null>(null);
-  const busMarkersRef = useRef<google.maps.Marker[]>([]);
+  const map = useRef<L.Map | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const testBusMarkerRef = useRef<L.Marker | null>(null);
+  const busMarkersRef = useRef<L.Marker[]>([]);
 
-  // Google Maps initialization
+  // Leaflet map initialization
   useEffect(() => {
-    console.log("Initializing map with API key:", googleMapsApiKey ? "API key exists" : "API key missing");
-    
-    if (!googleMapsApiKey || googleMapsApiKey.trim() === '') {
-      console.error("No Google Maps API key provided");
-      return;
-    }
+    console.log("Initializing Leaflet map");
     
     if (!mapContainer.current || map.current) return;
 
-    const initializeMap = async () => {
-      try {
-        // Initialize Google Maps
-        const loader = new Loader({
-          apiKey: googleMapsApiKey,
-          version: "weekly",
-          libraries: ["places"]
-        });
+    try {
+      // Create the map instance
+      map.current = L.map(mapContainer.current).setView([12.9716, 77.5946], 11); // Bangalore center
+      
+      // Add OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map.current);
+      
+      console.log("Leaflet map initialized successfully");
 
-        await loader.load();
-        console.log("Google Maps API loaded successfully");
+      // Add bus markers
+      buses.forEach((bus) => {
+        if (!map.current || bus.isTest) return; // Skip test bus here
         
-        // Create the map instance
-        if (mapContainer.current && !map.current) {
-          map.current = new google.maps.Map(mapContainer.current, {
-            center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
-            zoom: 11,
-            mapTypeControl: true,
-            streetViewControl: false,
-            fullscreenControl: true,
-          });
-
-          // Add event listener for when the map has finished loading
-          google.maps.event.addListenerOnce(map.current, 'idle', () => {
-            console.log("Map loaded and ready");
-
-            // Add bus markers
-            buses.forEach((bus) => {
-              if (!map.current || bus.isTest) return; // Skip test bus here
-              
-              const infoContent = `
-                <div style="padding: 8px; max-width: 200px;">
-                  <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
-                  <p style="margin-bottom: 4px;">${bus.route}</p>
-                  <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
-                  <p>ETA: ${bus.eta}</p>
-                </div>
-              `;
-              
-              const infoWindow = new google.maps.InfoWindow({
-                content: infoContent
-              });
-              
-              // Add the marker
-              const busMarker = new google.maps.Marker({
-                position: { lat: bus.coordinates[0], lng: bus.coordinates[1] },
-                map: map.current,
-                title: bus.id,
-                icon: {
-                  path: google.maps.SymbolPath.CIRCLE,
-                  fillColor: bus.id.includes('KA-01') || bus.id.includes('KA-02') ? '#1E40AF' : '#F59E0B',
-                  fillOpacity: 0.8,
-                  strokeColor: '#FFFFFF',
-                  strokeWeight: 2,
-                  scale: 10
-                }
-              });
-              
-              // Add click event for info window
-              busMarker.addListener('click', () => {
-                infoWindow.open(map.current, busMarker);
-              });
-              
-              busMarkersRef.current.push(busMarker);
-            });
-          });
-
-          // Add error handling for map
-          google.maps.event.addListener(map.current, 'error', () => {
-            console.error("Map error occurred");
-          });
-        }
-      } catch (error) {
-        console.error("Error initializing Google Maps:", error);
-      }
-    };
-
-    initializeMap();
+        const infoContent = `
+          <div style="padding: 8px; max-width: 200px;">
+            <h3 style="font-weight: bold; margin-bottom: 4px;">${bus.id}</h3>
+            <p style="margin-bottom: 4px;">${bus.route}</p>
+            <p style="margin-bottom: 4px;">Next stop: ${bus.nextStop}</p>
+            <p>ETA: ${bus.eta}</p>
+          </div>
+        `;
+        
+        // Add the marker
+        const busMarker = L.marker([bus.coordinates[0], bus.coordinates[1]], {
+          title: bus.id
+        }).addTo(map.current);
+        
+        // Add popup for info window
+        busMarker.bindPopup(infoContent);
+        busMarkersRef.current.push(busMarker);
+      });
+      
+      // Signal that map loaded successfully
+      toast.success("Map loaded successfully!");
+    } catch (error) {
+      console.error("Error initializing Leaflet map:", error);
+      toast.error("Failed to initialize map");
+    }
 
     return () => {
-      // Clean up markers and map on unmount
-      if (busMarkersRef.current.length) {
-        busMarkersRef.current.forEach(marker => marker.setMap(null));
-        busMarkersRef.current = [];
+      // Clean up on unmount
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
       }
-      
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setMap(null);
-        userMarkerRef.current = null;
-      }
-      
-      if (testBusMarkerRef.current) {
-        testBusMarkerRef.current.setMap(null);
-        testBusMarkerRef.current = null;
-      }
-      
-      map.current = null;
     };
-  }, [googleMapsApiKey, buses]);
+  }, [buses]);
 
   // Update user marker when location changes
   useEffect(() => {
@@ -154,44 +111,41 @@ export const MapContainer = ({
 
     // Update or create user marker
     if (userMarkerRef.current) {
-      userMarkerRef.current.setPosition({ lat: userLocation[0], lng: userLocation[1] });
+      userMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
     } else {
-      userMarkerRef.current = new google.maps.Marker({
-        position: { lat: userLocation[0], lng: userLocation[1] },
-        map: map.current,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#1E88E5",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 2,
-          scale: 8
-        },
-        title: "Your Location"
+      // Create a custom blue icon for user location
+      const blueIcon = L.divIcon({
+        className: 'blue-user-marker',
+        html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
       });
+      
+      userMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
+        icon: blueIcon,
+        title: "Your Location"
+      }).addTo(map.current);
     }
     
     // If test bus is enabled, update its position too
     if (isTestBusEnabled) {
       if (testBusMarkerRef.current) {
-        testBusMarkerRef.current.setPosition({ lat: userLocation[0], lng: userLocation[1] });
+        testBusMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
       } else {
-        testBusMarkerRef.current = new google.maps.Marker({
-          position: { lat: userLocation[0], lng: userLocation[1] },
-          map: map.current,
-          icon: {
-            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-            fillColor: '#FF5722',
-            fillOpacity: 0.8,
-            strokeColor: '#FFFFFF',
-            strokeWeight: 2,
-            scale: 7,
-            rotation: 0
-          },
-          title: "Test Bus (Your Phone)"
+        // Create a custom orange icon for test bus
+        const orangeIcon = L.divIcon({
+          className: 'orange-test-bus',
+          html: '<div class="w-5 h-5 bg-orange-500 rotate-45 transform origin-center border-2 border-white"></div>',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
         });
         
-        // Create info window for test bus
+        testBusMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
+          icon: orangeIcon,
+          title: "Test Bus (Your Phone)"
+        }).addTo(map.current);
+        
+        // Create popup for test bus
         const infoContent = `
           <div style="padding: 8px; max-width: 200px;">
             <h3 style="font-weight: bold; margin-bottom: 4px;">TEST-BUS-123</h3>
@@ -201,21 +155,15 @@ export const MapContainer = ({
           </div>
         `;
         
-        const infoWindow = new google.maps.InfoWindow({
-          content: infoContent
-        });
+        testBusMarkerRef.current.bindPopup(infoContent).openPopup();
         
-        // Show info window initially then close after a few seconds
-        infoWindow.open(map.current, testBusMarkerRef.current);
-        setTimeout(() => infoWindow.close(), 5000);
-        
-        // Add click event to show info window again
-        testBusMarkerRef.current.addListener('click', () => {
-          infoWindow.open(map.current, testBusMarkerRef.current);
-        });
+        // Close popup after a few seconds
+        setTimeout(() => {
+          testBusMarkerRef.current?.closePopup();
+        }, 5000);
       }
-    } else if (!isTestBusEnabled && testBusMarkerRef.current) {
-      testBusMarkerRef.current.setMap(null);
+    } else if (!isTestBusEnabled && testBusMarkerRef.current && map.current) {
+      map.current.removeLayer(testBusMarkerRef.current);
       testBusMarkerRef.current = null;
     }
   }, [userLocation, isTestBusEnabled]);
@@ -223,36 +171,13 @@ export const MapContainer = ({
   // Center map on location
   const centerOnLocation = () => {
     if (map.current && userLocation) {
-      map.current.panTo({ lat: userLocation[0], lng: userLocation[1] });
-      map.current.setZoom(15);
+      map.current.setView([userLocation[0], userLocation[1]], 15);
     }
   };
 
   return (
     <div className="w-full md:w-2/3">
       <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Live Bus Tracking</h2>
-      
-      {(!googleMapsApiKey || googleMapsApiKey.trim() === '') && (
-        <div className="mb-4 p-4 border border-red-300 bg-red-50 rounded-md">
-          <h3 className="font-bold text-red-800">Missing API Key</h3>
-          <p className="text-red-700">
-            To use the map functionality, you need to add a Google Maps API key to your environment variables.
-          </p>
-          <p className="mt-2 text-sm text-red-600">
-            Create a .env file in the root of your project with: VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
-          </p>
-          <div className="mt-4">
-            <a 
-              href="https://developers.google.com/maps/documentation/javascript/get-api-key" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              Get a Google Maps API key
-            </a>
-          </div>
-        </div>
-      )}
       
       {mapError && (
         <div className="mb-4 p-4 border border-red-300 bg-red-50 rounded-md">
@@ -264,22 +189,6 @@ export const MapContainer = ({
       
       <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
         <div ref={mapContainer} className="absolute inset-0" style={{ width: '100%', height: '100%' }}></div>
-        
-        {(!googleMapsApiKey || googleMapsApiKey.trim() === '') ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div className="p-4 text-center">
-              <p className="text-lg font-semibold text-gray-700">Map not available</p>
-              <p className="text-gray-600">Please add a Google Maps API key</p>
-            </div>
-          </div>
-        ) : !mapLoaded && !mapError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-            <div className="bg-white p-6 rounded-lg max-w-md text-center shadow-xl">
-              <h3 className="font-bold text-xl mb-2">Loading Map</h3>
-              <p>Please wait while we initialize the tracking system...</p>
-            </div>
-          </div>
-        ) : null}
       </div>
       
       <div className="mt-4 p-4 border border-amber-300 bg-amber-50 rounded-md">

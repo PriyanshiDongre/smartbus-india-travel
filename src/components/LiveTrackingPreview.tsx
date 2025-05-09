@@ -10,9 +10,6 @@ import { toast } from "@/components/ui/sonner";
 import { Coordinates } from "./live-tracking/types";
 
 const LiveTrackingPreview = () => {
-  // Get API key from environment variables
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-  
   // Get bus data
   const buses = getBusData();
   
@@ -25,13 +22,13 @@ const LiveTrackingPreview = () => {
     stopLocationTracking 
   } = useLocation();
   
-  // Map status management
+  // Map status management (no Google Maps API key needed)
   const { 
     mapLoaded, 
     mapError, 
     setMapLoadSuccess, 
     setMapLoadError 
-  } = useMapStatus(googleMapsApiKey);
+  } = useMapStatus();
   
   // Bus tracking functionality
   const { 
@@ -41,11 +38,6 @@ const LiveTrackingPreview = () => {
   
   // Handler for tracking a specific bus
   const handleTrackBus = (coordinates: Coordinates) => {
-    if (!googleMapsApiKey || googleMapsApiKey.trim() === '') {
-      toast.error("Cannot track bus: Missing Google Maps API key");
-      return;
-    }
-    
     toast.success(`Now tracking bus at coordinates: ${coordinates[0]}, ${coordinates[1]}`);
   };
   
@@ -66,7 +58,6 @@ const LiveTrackingPreview = () => {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Map Container */}
           <MapContainer 
-            googleMapsApiKey={googleMapsApiKey}
             buses={buses}
             userLocation={userLocation}
             isLocating={isLocating}
