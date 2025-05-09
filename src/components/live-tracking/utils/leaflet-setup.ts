@@ -16,19 +16,44 @@ export const setupLeaflet = () => {
   L.Marker.prototype.options.icon = DefaultIcon;
 };
 
-// Create user location marker icon with enhanced visual point
+// Create user location marker icon with enhanced visual point and stabilized appearance
 export const createUserLocationIcon = () => {
   return L.divIcon({
     className: 'user-location-marker',
     html: `
       <div class="relative">
-        <div class="absolute w-6 h-6 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
-        <div class="absolute w-4 h-4 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
-        <div class="absolute w-2 h-2 bg-white rounded-full left-2 top-2"></div>
+        <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
+        <div class="absolute w-6 h-6 bg-blue-600 rounded-full left-1 top-1 border-2 border-white"></div>
+        <div class="absolute w-3 h-3 bg-white rounded-full left-[10px] top-[10px]"></div>
       </div>
     `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+};
+
+// Create center point marker for precise location pinpointing
+export const createCenterPointMarker = (latlng: L.LatLngExpression) => {
+  return L.circleMarker(latlng, {
+    radius: 4,
+    fillColor: '#ffffff',
+    color: '#3b82f6',
+    weight: 3,
+    opacity: 1,
+    fillOpacity: 1,
+    interactive: false // Make it non-interactive to prevent interference with clicks
+  });
+};
+
+// Create accuracy circle to show GPS accuracy
+export const createAccuracyCircle = (latlng: L.LatLngExpression, radius: number) => {
+  return L.circle(latlng, {
+    radius: radius,
+    color: '#3b82f6',
+    fillColor: '#60a5fa',
+    fillOpacity: 0.15,
+    weight: 1,
+    interactive: false // Make it non-interactive
   });
 };
 

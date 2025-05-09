@@ -3,7 +3,14 @@ import { useRef, useEffect } from 'react';
 import L from 'leaflet';
 import { toast } from "@/components/ui/sonner";
 import { Bus, Coordinates } from "../types";
-import { createUserLocationIcon, createBusIcon, createBusPopupContent, createTestBusPopupContent } from '../utils/leaflet-setup';
+import { 
+  createUserLocationIcon, 
+  createBusIcon, 
+  createBusPopupContent, 
+  createTestBusPopupContent,
+  createCenterPointMarker,
+  createAccuracyCircle
+} from '../utils/leaflet-setup';
 
 export const useMapMarkers = (
   mapRef: React.MutableRefObject<L.Map | null>,
@@ -18,6 +25,9 @@ export const useMapMarkers = (
   const testBusMarkerRef = useRef<L.Marker | null>(null);
   const busMarkersRef = useRef<L.Marker[]>([]);
   const centerPointRef = useRef<L.CircleMarker | null>(null);
+  const isFirstLocationUpdate = useRef<boolean>(true);
+  const userLocationRef = useRef<Coordinates | null>(null);
+  const updateTimeoutRef = useRef<number | null>(null);
 
   // Initialize the map
   useEffect(() => {
@@ -76,101 +86,147 @@ export const useMapMarkers = (
     };
   }, [buses, mapContainerRef]);
 
-  // Update user marker when location changes
-  useEffect(() => {
-    if (!mapRef.current || !userLocation) return;
-
-    console.log("Updating user location on map:", userLocation, "Accuracy:", locationAccuracy);
+  // Debounced update function to prevent too frequent updates
+  const debouncedUpdateUserLocation = (location: Coordinates) => {
+    // Store the latest location for reference
+    userLocationRef.current = location;
     
-    // Create a custom blue icon for user location with pulsing effect
+    // Clear any pending updates
+    if (updateTimeoutRef.current !== null) {
+      window.clearTimeout(updateTimeoutRef.current);
+    }
+    
+    // Set a new timeout for the update
+    updateTimeoutRef.current = window.setTimeout(() => {
+      // Only update if this is still the latest location
+      if (userLocationRef.current === location && mapRef.current) {
+        updateUserLocationMarkers(location);
+      }
+    }, 100); // Small delay to batch updates
+  };
+  
+  // Function to update all user location related markers
+  const updateUserLocationMarkers = (location: Coordinates) => {
+    if (!mapRef.current) return;
+    
+    const latLng = [location[0], location[1]] as L.LatLngTuple;
+    
+    // Update user marker with improved icon
     const userLocationIcon = createUserLocationIcon();
-
-    // Update or create user marker
     if (userMarkerRef.current) {
-      userMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
+      userMarkerRef.current.setLatLng(latLng);
     } else {
-      userMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
+      userMarkerRef.current = L.marker(latLng, {
         icon: userLocationIcon,
-        title: "Your Location"
+        title: "Your Location",
+        zIndexOffset: 1000 // Ensure user marker is on top
       }).addTo(mapRef.current);
       
-      userMarkerRef.current.bindPopup("Your current location").openPopup();
+      userMarkerRef.current.bindPopup("Your current location");
       
-      // Close popup after 3 seconds
-      setTimeout(() => {
-        userMarkerRef.current?.closePopup();
-      }, 3000);
+      if (isFirstLocationUpdate.current) {
+        userMarkerRef.current.openPopup();
+        // Close popup after 3 seconds
+        setTimeout(() => {
+          userMarkerRef.current?.closePopup();
+        }, 3000);
+        isFirstLocationUpdate.current = false;
+      }
     }
 
     // Add or update center point marker for precise location pinpointing
     if (centerPointRef.current) {
-      centerPointRef.current.setLatLng([userLocation[0], userLocation[1]]);
+      centerPointRef.current.setLatLng(latLng);
     } else {
-      centerPointRef.current = L.circleMarker([userLocation[0], userLocation[1]], {
-        radius: 3,
-        fillColor: '#ffffff',
-        color: '#3b82f6',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 1
-      }).addTo(mapRef.current);
+      centerPointRef.current = createCenterPointMarker(latLng).addTo(mapRef.current);
     }
     
-    // Show accuracy circle if we have accuracy data
+    // Update accuracy circle if accuracy data is available
     if (locationAccuracy) {
       if (accuracyCircleRef.current) {
-        accuracyCircleRef.current.setLatLng([userLocation[0], userLocation[1]]);
+        accuracyCircleRef.current.setLatLng(latLng);
         accuracyCircleRef.current.setRadius(locationAccuracy);
       } else {
-        accuracyCircleRef.current = L.circle([userLocation[0], userLocation[1]], {
-          radius: locationAccuracy,
-          color: '#3b82f6',
-          fillColor: '#60a5fa',
-          fillOpacity: 0.15,
-          weight: 1
-        }).addTo(mapRef.current);
+        accuracyCircleRef.current = createAccuracyCircle(latLng, locationAccuracy).addTo(mapRef.current);
       }
+    } else if (accuracyCircleRef.current && !locationAccuracy) {
+      // Remove accuracy circle if no accuracy data
+      mapRef.current.removeLayer(accuracyCircleRef.current);
+      accuracyCircleRef.current = null;
     }
     
-    // If test bus is enabled, update its position too
+    // Update test bus if enabled
     if (isTestBusEnabled) {
-      // Create a custom bus icon
-      const busIcon = createBusIcon();
-      
-      if (testBusMarkerRef.current) {
-        testBusMarkerRef.current.setLatLng([userLocation[0], userLocation[1]]);
-      } else {
-        testBusMarkerRef.current = L.marker([userLocation[0], userLocation[1]], {
-          icon: busIcon,
-          title: "Test Bus (Your Phone)"
-        }).addTo(mapRef.current);
-        
-        // Create popup for test bus
-        const infoContent = createTestBusPopupContent();
-        
-        testBusMarkerRef.current.bindPopup(infoContent).openPopup();
-        
-        // Close popup after a few seconds
-        setTimeout(() => {
-          testBusMarkerRef.current?.closePopup();
-        }, 5000);
-      }
+      updateTestBusLocation(latLng);
     } else if (!isTestBusEnabled && testBusMarkerRef.current && mapRef.current) {
       mapRef.current.removeLayer(testBusMarkerRef.current);
       testBusMarkerRef.current = null;
     }
     
-    // Center map if this is the first location update
-    if (userLocation && mapRef.current && !mapRef.current.getBounds().contains([userLocation[0], userLocation[1]])) {
+    // Center map on first location update
+    if (isFirstLocationUpdate.current && mapRef.current && location) {
       centerOnLocation();
+      isFirstLocationUpdate.current = false;
     }
-  }, [userLocation, isTestBusEnabled, locationAccuracy, mapRef]);
+  };
+  
+  // Update test bus location
+  const updateTestBusLocation = (latLng: L.LatLngTuple) => {
+    if (!mapRef.current) return;
+    
+    // Create a custom bus icon
+    const busIcon = createBusIcon();
+    
+    if (testBusMarkerRef.current) {
+      testBusMarkerRef.current.setLatLng(latLng);
+    } else {
+      testBusMarkerRef.current = L.marker(latLng, {
+        icon: busIcon,
+        title: "Test Bus (Your Phone)"
+      }).addTo(mapRef.current);
+      
+      // Create popup for test bus
+      const infoContent = createTestBusPopupContent();
+      
+      testBusMarkerRef.current.bindPopup(infoContent).openPopup();
+      
+      // Close popup after a few seconds
+      setTimeout(() => {
+        testBusMarkerRef.current?.closePopup();
+      }, 5000);
+    }
+  };
+
+  // Update user marker when location changes
+  useEffect(() => {
+    if (!mapRef.current || !userLocation) return;
+    
+    // Use the debounced update function
+    debouncedUpdateUserLocation(userLocation);
+  }, [userLocation, isTestBusEnabled, locationAccuracy]);
 
   // Clean up markers when component unmounts
   useEffect(() => {
     return () => {
-      if (centerPointRef.current && mapRef.current) {
-        mapRef.current.removeLayer(centerPointRef.current);
+      // Clear any pending timeout
+      if (updateTimeoutRef.current !== null) {
+        window.clearTimeout(updateTimeoutRef.current);
+      }
+      
+      // Clean up markers
+      if (mapRef.current) {
+        if (centerPointRef.current) {
+          mapRef.current.removeLayer(centerPointRef.current);
+        }
+        if (accuracyCircleRef.current) {
+          mapRef.current.removeLayer(accuracyCircleRef.current);
+        }
+        if (userMarkerRef.current) {
+          mapRef.current.removeLayer(userMarkerRef.current);
+        }
+        if (testBusMarkerRef.current) {
+          mapRef.current.removeLayer(testBusMarkerRef.current);
+        }
       }
     };
   }, [mapRef]);
