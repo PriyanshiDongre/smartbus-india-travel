@@ -41,7 +41,7 @@ export const MapContainer = ({
   useEffect(() => {
     console.log("Initializing map with API key:", googleMapsApiKey ? "API key exists" : "API key missing");
     
-    if (!googleMapsApiKey) {
+    if (!googleMapsApiKey || googleMapsApiKey.trim() === '') {
       console.error("No Google Maps API key provided");
       return;
     }
@@ -228,22 +228,29 @@ export const MapContainer = ({
     }
   };
 
-  // Track specific bus
-  const trackBus = (coordinates: Coordinates) => {
-    if (mapLoaded && map.current) {
-      map.current.panTo({ lat: coordinates[0], lng: coordinates[1] });
-      map.current.setZoom(14);
-    }
-  };
-
   return (
     <div className="w-full md:w-2/3">
       <h2 className="text-2xl font-bold mb-6 text-smartbus-text-dark">Live Bus Tracking</h2>
       
-      {!googleMapsApiKey && (
+      {(!googleMapsApiKey || googleMapsApiKey.trim() === '') && (
         <div className="mb-4 p-4 border border-red-300 bg-red-50 rounded-md">
           <h3 className="font-bold text-red-800">Missing API Key</h3>
-          <p className="text-red-700">Please add a Google Maps API key to your environment variables to enable the map functionality.</p>
+          <p className="text-red-700">
+            To use the map functionality, you need to add a Google Maps API key to your environment variables.
+          </p>
+          <p className="mt-2 text-sm text-red-600">
+            Create a .env file in the root of your project with: VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
+          </p>
+          <div className="mt-4">
+            <a 
+              href="https://developers.google.com/maps/documentation/javascript/get-api-key" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              Get a Google Maps API key
+            </a>
+          </div>
         </div>
       )}
       
@@ -255,27 +262,24 @@ export const MapContainer = ({
         </div>
       )}
       
-      {!mapLoaded && !mapError && (
-        <div className="mb-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
-          <h3 className="font-bold text-yellow-800">Loading Map...</h3>
-          <p className="mb-2 text-yellow-700">Please wait while we set up the tracking map.</p>
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-smartbus-blue"></div>
-          </div>
-        </div>
-      )}
-      
       <div className="map-container h-[400px] relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-muted">
         <div ref={mapContainer} className="absolute inset-0" style={{ width: '100%', height: '100%' }}></div>
         
-        {!mapLoaded && !mapError && (
+        {(!googleMapsApiKey || googleMapsApiKey.trim() === '') ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="p-4 text-center">
+              <p className="text-lg font-semibold text-gray-700">Map not available</p>
+              <p className="text-gray-600">Please add a Google Maps API key</p>
+            </div>
+          </div>
+        ) : !mapLoaded && !mapError ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <div className="bg-white p-6 rounded-lg max-w-md text-center shadow-xl">
               <h3 className="font-bold text-xl mb-2">Loading Map</h3>
               <p>Please wait while we initialize the tracking system...</p>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
       
       <div className="mt-4 p-4 border border-amber-300 bg-amber-50 rounded-md">
@@ -292,7 +296,7 @@ export const MapContainer = ({
           Open Full Map
         </Button>
         
-        {mapLoaded && (
+        {!mapError && (
           <>
             <Button 
               variant="outline" 

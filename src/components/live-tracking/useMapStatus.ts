@@ -1,17 +1,24 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 
 export const useMapStatus = (googleMapsApiKey: string) => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   
-  // Check for API key and report missing dependencies
-  if (!googleMapsApiKey) {
-    console.error("No Google Maps API key provided");
-    setMapError("Missing Google Maps API key");
-    toast.error("Missing Google Maps API key. Please add one to your environment variables.");
-  }
+  // Check for API key on mount
+  useEffect(() => {
+    // Clear any previous errors
+    setMapError(null);
+    
+    // Check if API key is available
+    if (!googleMapsApiKey || googleMapsApiKey.trim() === '') {
+      const error = "Missing Google Maps API key";
+      setMapError(error);
+      toast.error("Missing Google Maps API key. Please add one to your environment variables.");
+      console.error(error);
+    }
+  }, [googleMapsApiKey]);
   
   const setMapLoadSuccess = () => {
     setMapLoaded(true);

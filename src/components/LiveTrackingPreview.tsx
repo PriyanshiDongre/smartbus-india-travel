@@ -41,6 +41,11 @@ const LiveTrackingPreview = () => {
   
   // Handler for tracking a specific bus
   const handleTrackBus = (coordinates: Coordinates) => {
+    if (!googleMapsApiKey || googleMapsApiKey.trim() === '') {
+      toast.error("Cannot track bus: Missing Google Maps API key");
+      return;
+    }
+    
     toast.success(`Now tracking bus at coordinates: ${coordinates[0]}, ${coordinates[1]}`);
   };
   
