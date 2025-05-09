@@ -9,6 +9,8 @@ export const useLocation = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const lastLocationRef = useRef<Coordinates | null>(null);
+  const locationUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // GPS functionality to track user location
   const startLocationTracking = () => {
@@ -29,6 +31,7 @@ export const useLocation = () => {
         const coordinates: Coordinates = [latitude, longitude];
         setUserLocation(coordinates);
         setLocationAccuracy(accuracy);
+        lastLocationRef.current = coordinates;
         
         if (accuracy <= 20) {
           toast.success(`Location found with high accuracy (±${Math.round(accuracy)}m)`);
@@ -64,16 +67,42 @@ export const useLocation = () => {
       }
     );
     
-    // Set up continuous tracking with improved settings
+    // Set up continuous tracking with stabilization
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        const coordinates: Coordinates = [latitude, longitude];
-        setUserLocation(coordinates);
-        setLocationAccuracy(accuracy);
+        const newCoordinates: Coordinates = [latitude, longitude];
         
-        // Log accuracy for debugging
-        console.log(`Location updated: Accuracy ±${accuracy}m`, coordinates);
+        // Implement a filter to reduce jitter
+        if (lastLocationRef.current) {
+          const [prevLat, prevLng] = lastLocationRef.current;
+          const latDiff = Math.abs(latitude - prevLat);
+          const lngDiff = Math.abs(longitude - prevLng);
+          
+          // Only update if position changed significantly (reduces jitter)
+          // or accuracy improved significantly
+          const significantChange = (latDiff > 0.00001 || lngDiff > 0.00001);
+          const currentAccuracy = locationAccuracy || Infinity;
+          const accuracyImproved = accuracy < currentAccuracy - 5;
+          
+          if (!significantChange && !accuracyImproved) {
+            return; // Skip this update to reduce constant refreshing
+          }
+        }
+        
+        // Debounce updates to prevent rapid UI refreshes
+        if (locationUpdateTimeoutRef.current) {
+          clearTimeout(locationUpdateTimeoutRef.current);
+        }
+        
+        locationUpdateTimeoutRef.current = setTimeout(() => {
+          setUserLocation(newCoordinates);
+          setLocationAccuracy(accuracy);
+          lastLocationRef.current = newCoordinates;
+          
+          // Log accuracy for debugging
+          console.log(`Location updated: Accuracy ±${accuracy}m`, newCoordinates);
+        }, 300); // Wait 300ms before updating state
       },
       (error) => {
         console.error("Tracking error:", error);
@@ -94,6 +123,11 @@ export const useLocation = () => {
       setLocationAccuracy(null);
       toast.info("Location tracking stopped");
     }
+    
+    if (locationUpdateTimeoutRef.current) {
+      clearTimeout(locationUpdateTimeoutRef.current);
+      locationUpdateTimeoutRef.current = null;
+    }
   };
   
   // Clean up on unmount
@@ -101,6 +135,9 @@ export const useLocation = () => {
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (locationUpdateTimeoutRef.current) {
+        clearTimeout(locationUpdateTimeoutRef.current);
       }
     };
   }, []);
