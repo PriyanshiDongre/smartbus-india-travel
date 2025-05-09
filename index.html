@@ -1,200 +1,26 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Real-time Bus Tracking</title>
-  
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-        crossorigin=""/>
-  
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      font-family: Arial, sans-serif;
-    }
-    
-    #map {
-      height: 100%;
-      width: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    
-    .info-panel {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      max-width: 300px;
-    }
-    
-    .status {
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-    
-    .coordinates {
-      font-size: 12px;
-      margin-bottom: 10px;
-    }
-    
-    button {
-      background: #4CAF50;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      margin-top: 5px;
-    }
-    
-    button:hover {
-      background: #45a049;
-    }
-    
-    .error {
-      color: red;
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  
-  <div class="info-panel">
-    <div class="status">Status: <span id="status">Waiting for location...</span></div>
-    <div class="coordinates">
-      Lat: <span id="latitude">-</span>° <br>
-      Lng: <span id="longitude">-</span>°
-    </div>
-    <button id="centerButton">Center Map</button>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>smartbus-india-travel</title>
+    <meta name="description" content="Lovable Generated Project" />
+    <meta name="author" content="Lovable" />
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-          crossorigin=""></script>
-          
-  <script>
-    // Initialize map
-    const map = L.map('map').setView([20.5937, 78.9629], 5); // Default center on India
-    
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-    
-    // Status elements
-    const statusElement = document.getElementById('status');
-    const latElement = document.getElementById('latitude');
-    const lngElement = document.getElementById('longitude');
-    const centerButton = document.getElementById('centerButton');
-    
-    // Bus icon for marker
-    const busIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-    
-    // Create marker but don't add to map yet
-    let marker = null;
-    let watchId = null;
-    let currentPosition = null;
-    
-    // Function to start tracking
-    function startTracking() {
-      if (!navigator.geolocation) {
-        statusElement.textContent = 'Geolocation is not supported by your browser';
-        statusElement.classList.add('error');
-        return;
-      }
-      
-      statusElement.textContent = 'Locating...';
-      
-      // Watch position with high accuracy
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-      };
-      
-      watchId = navigator.geolocation.watchPosition(
-        successCallback, 
-        errorCallback, 
-        options
-      );
-    }
-    
-    // Handle successful location
-    function successCallback(position) {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      currentPosition = [lat, lng];
-      
-      // Update UI
-      latElement.textContent = lat.toFixed(6);
-      lngElement.textContent = lng.toFixed(6);
-      statusElement.textContent = 'Location found!';
-      statusElement.classList.remove('error');
-      
-      // If first position, center map
-      if (!marker) {
-        marker = L.marker(currentPosition, {icon: busIcon}).addTo(map);
-        marker.bindPopup('You are here!').openPopup();
-        map.setView(currentPosition, 16);
-      } else {
-        // Update marker position
-        marker.setLatLng(currentPosition);
-      }
-    }
-    
-    // Handle location errors
-    function errorCallback(error) {
-      statusElement.classList.add('error');
-      
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          statusElement.textContent = 'User denied the request for Geolocation';
-          break;
-        case error.POSITION_UNAVAILABLE:
-          statusElement.textContent = 'Location information is unavailable';
-          break;
-        case error.TIMEOUT:
-          statusElement.textContent = 'The request to get user location timed out';
-          break;
-        case error.UNKNOWN_ERROR:
-          statusElement.textContent = 'An unknown error occurred';
-          break;
-      }
-    }
-    
-    // Center map button event
-    centerButton.addEventListener('click', function() {
-      if (currentPosition) {
-        map.setView(currentPosition, 16);
-      }
-    });
-    
-    // Start tracking on page load
-    startTracking();
-  </script>
-</body>
+    <meta property="og:title" content="smartbus-india-travel" />
+    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
