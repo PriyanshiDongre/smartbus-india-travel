@@ -12,6 +12,10 @@ export const useMapStatus = () => {
     setMapError(null);
     
     // No API key needed for Leaflet + OpenStreetMap
+    // Just check if Leaflet is available
+    if (typeof window !== 'undefined' && !window.L) {
+      setMapError("Leaflet library not loaded properly");
+    }
   }, []);
   
   const setMapLoadSuccess = () => {
